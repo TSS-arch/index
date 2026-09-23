@@ -1,652 +1,266 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Web Speech API · realtime & submit</title>
-  <style>
-    * {
-      box-sizing: border-box;
-      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-    }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      background: linear-gradient(145deg, #f0f4fa 0%, #d9e2ef 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 1.5rem;
-    }
-    .card {
-      max-width: 820px;
-      width: 100%;
-      background: rgba(255, 255, 255, 0.85);
-      backdrop-filter: blur(8px);
-      border-radius: 2.5rem;
-      padding: 2rem 2rem 2.2rem;
-      box-shadow: 0 20px 35px -8px rgba(0, 20, 40, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.6);
-      transition: all 0.2s ease;
-    }
-    h1 {
-      font-size: 2rem;
-      font-weight: 600;
-      margin: 0 0 0.35rem 0;
-      letter-spacing: -0.02em;
-      color: #0b2a3e;
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-    }
-    h1 span {
-      background: #0b2a3e;
-      color: white;
-      font-size: 0.9rem;
-      font-weight: 500;
-      padding: 0.2rem 0.8rem;
-      border-radius: 30px;
-      letter-spacing: 0.3px;
-    }
-    .subhead {
-      font-size: 1rem;
-      color: #2c4a66;
-      margin-top: 0;
-      margin-bottom: 1.8rem;
-      border-left: 4px solid #3b7a9e;
-      padding-left: 1rem;
-      font-weight: 400;
-      background: #e9f0f8;
-      border-radius: 0 10px 10px 0;
-      padding: 0.7rem 1rem;
-    }
-    .transcript-box {
-      background: #ffffffdd;
-      border: 2px solid #b8d0e0;
-      border-radius: 2rem;
-      padding: 1.5rem 1.8rem;
-      margin-bottom: 1.7rem;
-      box-shadow: inset 0 2px 8px rgba(0,0,0,0.02), 0 6px 12px -8px rgba(20, 40, 60, 0.2);
-      min-height: 150px;
-    }
-    .label {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.85rem;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      font-weight: 600;
-      color: #3a5b78;
-      margin-bottom: 0.75rem;
-    }
-    .badge {
-      background: #cbddee;
-      color: #0d3146;
-      padding: 0.2rem 0.9rem;
-      border-radius: 40px;
-      font-size: 0.7rem;
-      font-weight: 600;
-      letter-spacing: 0.4px;
-    }
-    #liveTranscript, #submittedTranscript {
-      font-size: 1.3rem;
-      line-height: 1.55;
-      color: #102b3f;
-      word-break: break-word;
-      white-space: pre-wrap;
-      min-height: 3.5rem;
-      transition: color 0.2s;
-      font-weight: 450;
-      background: #ffffffb3;
-      border-radius: 1rem;
-      padding: 0.8rem 1rem;
-      border-left: 5px solid #ffffff00;
-    }
-    #liveTranscript.interim {
-      color: #1e5e7e;
-      font-style: italic;
-      border-left-color: #4699c7;
-    }
-    #submittedTranscript {
-      border-left-color: #238b5e;
-      background: #f6fff9;
-    }
-    .placeholder {
-      color: #6e8da8;
-      font-style: italic;
-      font-weight: 400;
-      opacity: 0.8;
-    }
-    .controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.9rem;
-      align-items: center;
-      justify-content: space-between;
-      margin-top: 1rem;
-    }
-    .btn-group {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.8rem;
-    }
-    button {
-      background: #ffffff;
-      border: none;
-      border-radius: 60px;
-      padding: 0.85rem 1.8rem;
-      font-size: 1rem;
-      font-weight: 550;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.6rem;
-      cursor: pointer;
-      transition: 0.15s ease;
-      box-shadow: 0 5px 12px -5px rgba(0, 20, 40, 0.2), 0 0 0 1px #c7d9e8;
-      color: #0e2e44;
-      background: #fcfdff;
-      letter-spacing: 0.2px;
-      flex: 0 0 auto;
-    }
-    button i {
-      font-style: normal;
-      font-size: 1.2rem;
-      filter: drop-shadow(0 2px 2px rgba(0,0,0,0.05));
-    }
-    button:hover {
-      background: #ffffff;
-      box-shadow: 0 8px 18px -8px #1c4b6e, 0 0 0 1px #9bbbd4;
-      transform: scale(1.01);
-    }
-    button:active {
-      transform: scale(0.98);
-      box-shadow: 0 2px 6px -2px #0b2a3e;
-    }
-    button:disabled {
-      opacity: 0.5;
-      transform: none;
-      box-shadow: 0 2px 6px -2px #a0b8cc;
-      pointer-events: none;
-      filter: grayscale(0.4);
-    }
-    .primary {
-      background: #1b4f72;
-      color: white;
-      box-shadow: 0 8px 18px -6px #1b4f72, 0 0 0 1px #143e5a;
-    }
-    .primary:hover {
-      background: #24648b;
-      box-shadow: 0 10px 22px -8px #10344b, 0 0 0 1px #2a6d95;
-    }
-    .secondary {
-      background: #eaf1f9;
-      color: #10344b;
-    }
-    .danger {
-      background: #ffe8e8;
-      color: #a12b2b;
-      box-shadow: 0 5px 12px -5px #b13e3e40, 0 0 0 1px #e6bcbc;
-    }
-    .danger:hover {
-      background: #ffdede;
-      box-shadow: 0 8px 18px -8px #b13e3e, 0 0 0 1px #d49c9c;
-    }
-    .status-indicator {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.9rem;
-      font-weight: 500;
-      color: #225577;
-      background: #e5eff9b3;
-      padding: 0.5rem 1.2rem;
-      border-radius: 50px;
-      backdrop-filter: blur(2px);
-      border: 1px solid #c2d6e8;
-    }
-    .dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: #9aaec2;
-      transition: 0.2s;
-    }
-    .dot.listening {
-      background: #2ecc71;
-      box-shadow: 0 0 0 4px #2ecc7130, 0 0 12px #2ecc71;
-      animation: pulse 1.3s infinite;
-    }
-    @keyframes pulse {
-      0% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.7; transform: scale(1.1); }
-      100% { opacity: 1; transform: scale(1); }
-    }
-    .footer-note {
-      font-size: 0.78rem;
-      color: #56738b;
-      text-align: center;
-      margin-top: 1.5rem;
-      border-top: 1px dashed #b8cfdf;
-      padding-top: 1rem;
-    }
-    .error-msg {
-      color: #b13e3e;
-      background: #fff0f0;
-      padding: 0.5rem 1rem;
-      border-radius: 40px;
-      font-size: 0.85rem;
-      font-weight: 500;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Speech to Text</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    margin: 0; padding: 16px;
+    background: #f0f4fa; min-height: 100vh;
+  }
+  h1 { font-size: 1.4rem; color: #0b2a3e; margin: 0 0 4px; }
+  .sub { color: #4a6a85; font-size: 0.9rem; margin-bottom: 16px; }
+  .box {
+    background: #fff; border-radius: 16px; padding: 16px;
+    margin-bottom: 14px; border: 2px solid #d0dfee;
+    box-shadow: 0 4px 12px rgba(20,50,80,0.06);
+  }
+  .box h3 {
+    margin: 0 0 8px; font-size: 0.75rem; text-transform: uppercase;
+    letter-spacing: 0.5px; color: #3a5b78;
+  }
+  #live, #saved {
+    font-size: 1.15rem; line-height: 1.5; color: #102b3f;
+    min-height: 3rem; white-space: pre-wrap; word-break: break-word;
+  }
+  #live.interim { color: #1e5e7e; font-style: italic; }
+  .placeholder { color: #8aa3b8; font-style: italic; }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  button {
+    flex: 1 1 auto; padding: 14px 16px; font-size: 15px;
+    font-weight: 600; border: none; border-radius: 12px;
+    cursor: pointer; color: #fff; background: #1b4f72;
+    transition: 0.15s;
+  }
+  button:active { transform: scale(0.97); }
+  button:disabled { opacity: 0.45; }
+  button.alt { background: #eaf1f9; color: #10344b; }
+  button.red { background: #b13e3e; }
+  #status {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.85rem; color: #225577; font-weight: 500;
+    margin-top: 10px;
+  }
+  .dot {
+    width: 10px; height: 10px; border-radius: 50%; background: #9aaec2;
+  }
+  .dot.on {
+    background: #2ecc71;
+    box-shadow: 0 0 0 4px rgba(46,204,113,0.25);
+    animation: pulse 1.3s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; } 50% { opacity: 0.5; }
+  }
+  #log {
+    background: #0d1b26; color: #6ee7a8; font-family: monospace;
+    font-size: 12px; padding: 12px; border-radius: 12px;
+    white-space: pre-wrap; max-height: 180px; overflow-y: auto;
+    margin-top: 12px;
+  }
+</style>
 </head>
 <body>
-  <div class="card">
-    <h1>
-      🎤 Web Speech
-      <span>realtime</span>
-    </h1>
-    <div class="subhead">
-      Speak into your microphone — text appears live. Click <strong>Submit</strong> to freeze a copy below.
-    </div>
 
-    <!-- LIVE transcription area -->
-    <div class="transcript-box">
-      <div class="label">
-        <span>🔴 LIVE TRANSCRIPT</span>
-        <span class="badge" id="liveBadge">interim</span>
-      </div>
-      <div id="liveTranscript" class="placeholder">
-        Click "Start listening" and speak…
-      </div>
-    </div>
+  <h1>🎤 Speech to Text</h1>
+  <div class="sub">Tap Start, allow mic, and speak. Tap Submit to freeze.</div>
 
-    <!-- SUBMITTED (frozen) area -->
-    <div class="transcript-box">
-      <div class="label">
-        <span>✅ SUBMITTED TEXT</span>
-        <span class="badge">final</span>
-      </div>
-      <div id="submittedTranscript" class="placeholder">
-        Submitted text will appear here after you click Submit.
-      </div>
-    </div>
-
-    <!-- controls row -->
-    <div class="controls">
-      <div class="btn-group">
-        <button id="startBtn" class="primary">
-          <i>🎙️</i> Start listening
-        </button>
-        <button id="stopBtn" class="secondary" disabled>
-          <i>⏹️</i> Stop
-        </button>
-        <button id="submitBtn" class="primary">
-          <i>📥</i> Submit
-        </button>
-        <button id="clearBtn" class="danger">
-          <i>🧹</i> Clear
-        </button>
-      </div>
-      <div class="status-indicator">
-        <span class="dot" id="statusDot"></span>
-        <span id="statusText">idle</span>
-      </div>
-    </div>
-    <div class="footer-note">
-      ⚡ Web Speech API — works best in Chrome, Edge, Safari. Allow microphone access.
-    </div>
+  <div class="box">
+    <h3>🔴 Live transcript</h3>
+    <div id="live" class="placeholder">Tap "Start listening" and speak…</div>
   </div>
 
-  <script>
-    (function() {
-      // ----- DOM elements -----
-      const liveEl = document.getElementById('liveTranscript');
-      const submittedEl = document.getElementById('submittedTranscript');
-      const startBtn = document.getElementById('startBtn');
-      const stopBtn = document.getElementById('stopBtn');
-      const submitBtn = document.getElementById('submitBtn');
-      const clearBtn = document.getElementById('clearBtn');
-      const statusDot = document.getElementById('statusDot');
-      const statusText = document.getElementById('statusText');
-      const liveBadge = document.getElementById('liveBadge');
+  <div class="box">
+    <h3>✅ Submitted text</h3>
+    <div id="saved" class="placeholder">Submitted text appears here.</div>
+  </div>
 
-      // ----- state -----
-      let recognition = null;
-      let isListening = false;
-      let finalTranscript = '';          // accumulated final text from recognition (real-time)
-      let interimTranscript = '';        // current interim (non-final) chunk
+  <div class="btns">
+    <button id="startBtn">▶ Start listening</button>
+    <button id="stopBtn" class="alt" disabled>⏹ Stop</button>
+  </div>
+  <div class="btns" style="margin-top:8px;">
+    <button id="submitBtn">📥 Submit</button>
+    <button id="clearBtn" class="red">🧹 Clear</button>
+  </div>
 
-      // check for Web Speech API support
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) {
-        alert('Web Speech API is not supported in this browser. Please use Chrome, Edge or Safari.');
-        startBtn.disabled = true;
-        stopBtn.disabled = true;
-        submitBtn.disabled = true;
-        clearBtn.disabled = true;
-        statusText.textContent = 'unsupported';
-        statusDot.style.background = '#b13e3e';
-        liveEl.textContent = 'Speech recognition not available.';
-        liveEl.classList.remove('placeholder');
-        return;
-      }
+  <div id="status"><span class="dot" id="dot"></span><span id="statusTxt">idle</span></div>
 
-      // ----- helper to update UI (live area) -----
-      function updateLiveDisplay() {
-        // combine final + interim for display
-        let fullText = '';
-        if (finalTranscript) fullText += finalTranscript;
-        if (interimTranscript) {
-          if (fullText && !fullText.endsWith(' ') && interimTranscript.length > 0) {
-            // add a space if needed for readability, but we preserve text as spoken
-            fullText += ' ';
-          }
-          fullText += interimTranscript;
-        }
+  <div id="log">Diagnostics…</div>
 
-        // if both empty → placeholder
-        if (!fullText.trim()) {
-          liveEl.textContent = 'Click "Start listening" and speak…';
-          liveEl.classList.add('placeholder');
-          liveEl.classList.remove('interim');
-          liveBadge.textContent = 'interim';
-        } else {
-          liveEl.textContent = fullText;
-          liveEl.classList.remove('placeholder');
-          // show interim style if there is any interim part (or we are currently listening and not final)
-          if (interimTranscript.length > 0) {
-            liveEl.classList.add('interim');
-            liveBadge.textContent = 'interim';
-          } else {
-            liveEl.classList.remove('interim');
-            liveBadge.textContent = 'final*';
-          }
-        }
-        // update status badge depending on content
-        if (!isListening && finalTranscript.trim()) {
-          liveBadge.textContent = 'paused';
-        } else if (isListening && interimTranscript.length > 0) {
-          liveBadge.textContent = 'interim';
-        } else if (isListening) {
-          liveBadge.textContent = 'listening';
-        }
-      }
+<script>
+const logEl = document.getElementById('log');
+const liveEl = document.getElementById('live');
+const savedEl = document.getElementById('saved');
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+const submitBtn = document.getElementById('submitBtn');
+const clearBtn = document.getElementById('clearBtn');
+const dot = document.getElementById('dot');
+const statusTxt = document.getElementById('statusTxt');
 
-      // ----- update status indicator (dot & text) -----
-      function setStatus(listening) {
-        isListening = listening;
-        if (listening) {
-          statusDot.classList.add('listening');
-          statusText.textContent = 'listening';
-          startBtn.disabled = true;
-          stopBtn.disabled = false;
-        } else {
-          statusDot.classList.remove('listening');
-          statusText.textContent = 'idle';
-          startBtn.disabled = false;
-          stopBtn.disabled = true;
-        }
-      }
+function log(m) { logEl.textContent += '\n' + m; console.log(m); }
 
-      // ----- reset live transcript (but keep submitted as is) -----
-      function resetLiveTranscript() {
-        finalTranscript = '';
-        interimTranscript = '';
-        updateLiveDisplay();
-      }
+// ---------- Diagnostics ----------
+log('Protocol: ' + location.protocol);
+log('Secure context: ' + window.isSecureContext);
+log('Host: ' + location.host);
 
-      // ----- initialization of recognition -----
-      function initRecognition() {
-        const rec = new SpeechRecognition();
-        rec.continuous = true;        // keep listening even after pause
-        rec.interimResults = true;    // get real-time interim results
-        rec.lang = 'en-US';           // you can change to 'en-IN' or others
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+log('SpeechRecognition: ' + (SR ? 'YES' : 'NO'));
 
-        // on result: update final and interim transcripts
-        rec.onresult = (event) => {
-          let newFinal = '';
-          let newInterim = '';
+if (!window.isSecureContext) {
+  log('❌ NOT SECURE — must use https:// or localhost');
+}
+if (!SR) {
+  log('❌ Not supported. Use Chrome/Android or Safari/iOS.');
+  log('   (In-app browsers like Instagram/Facebook do NOT work.)');
+}
 
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            const result = event.results[i];
-            const transcript = result[0].transcript;
-            if (result.isFinal) {
-              newFinal += transcript;
-            } else {
-              newInterim += transcript;
-            }
-          }
+// ---------- State ----------
+let rec = null;
+let listening = false;
+let finalText = '';
+let interimText = '';
 
-          // update finalTranscript: append new final chunks
-          if (newFinal) {
-            // if finalTranscript doesn't end with space and newFinal starts without space, add a space?
-            // But we respect the transcript. Usually speech API includes spaces naturally.
-            finalTranscript += newFinal;
-          }
+// ---------- UI helpers ----------
+function renderLive() {
+  const combined = (finalText + (interimText ? ' ' + interimText : '')).trim();
+  if (!combined) {
+    liveEl.textContent = 'Tap "Start listening" and speak…';
+    liveEl.classList.add('placeholder');
+    liveEl.classList.remove('interim');
+  } else {
+    liveEl.textContent = combined;
+    liveEl.classList.remove('placeholder');
+    liveEl.classList.toggle('interim', interimText.length > 0);
+  }
+}
 
-          // update interimTranscript to the latest interim (replace, not append)
-          // Because each interim event gives the accumulated interim for the current utterance.
-          // We want to keep the latest interim chunk (if any) for display.
-          if (newInterim) {
-            interimTranscript = newInterim;
-          } else if (!newInterim && event.results.length > 0) {
-            // when no new interim, we might still have previous interim? But if we got a final, interim may still exist.
-            // We need to rebuild the full interim from all non-final results.
-            // Better approach: rebuild all interim from scratch on each event.
-            // Simpler: recalculate interim from all results (non-final).
-            // Let's do robust recalculation (helps avoid stale interim).
-            let rebuiltInterim = '';
-            for (let i = 0; i < event.results.length; i++) {
-              if (!event.results[i].isFinal) {
-                rebuiltInterim += event.results[i][0].transcript;
-              }
-            }
-            interimTranscript = rebuiltInterim;
-          } else {
-            // no new interim and no results? but if all became final, interim should be empty.
-            // recalc interim from all non-final results
-            let rebuiltInterim = '';
-            for (let i = 0; i < event.results.length; i++) {
-              if (!event.results[i].isFinal) {
-                rebuiltInterim += event.results[i][0].transcript;
-              }
-            }
-            interimTranscript = rebuiltInterim;
-          }
+function setStatus(on, label) {
+  listening = on;
+  dot.classList.toggle('on', on);
+  statusTxt.textContent = label || (on ? 'listening' : 'idle');
+  startBtn.disabled = on;
+  stopBtn.disabled = !on;
+}
 
-          // also, because final results are kept in event.results and we only append newFinal to finalTranscript,
-          // we must be careful about duplicates: finalTranscript already contains previous final results.
-          // But newFinal only includes newly finalized results in this event.
-          // For safety, rebuild finalTranscript from all final results? That avoids duplication from multiple events.
-          // Let's rebuild from scratch using event.results to be perfectly accurate.
-          // This is a better approach: iterate all results and accumulate final text.
-          let rebuiltFinal = '';
-          for (let i = 0; i < event.results.length; i++) {
-            if (event.results[i].isFinal) {
-              rebuiltFinal += event.results[i][0].transcript;
-            }
-          }
-          // Override finalTranscript with rebuilt final (more consistent)
-          finalTranscript = rebuiltFinal;
+// ---------- Build recognizer ----------
+if (SR) {
+  rec = new SR();
+  rec.continuous = true;
+  rec.interimResults = true;
+  rec.lang = 'en-US';   // change to 'en-IN' for Indian English
 
-          // Rebuild interim similarly
-          let rebuiltInterimFinal = '';
-          for (let i = 0; i < event.results.length; i++) {
-            if (!event.results[i].isFinal) {
-              rebuiltInterimFinal += event.results[i][0].transcript;
-            }
-          }
-          interimTranscript = rebuiltInterimFinal;
+  rec.onstart = () => {
+    log('✅ onstart');
+    setStatus(true, 'listening');
+  };
 
-          // update UI
-          updateLiveDisplay();
-        };
+  rec.onspeechstart = () => log('🗣 speech detected');
+  rec.onspeechend = () => log('🤐 speech ended');
 
-        rec.onerror = (event) => {
-          console.warn('Speech recognition error:', event.error);
-          if (event.error === 'not-allowed') {
-            statusText.textContent = 'mic blocked';
-          } else if (event.error === 'no-speech') {
-            // ignore no-speech, it's common
-          } else {
-            statusText.textContent = `error: ${event.error}`;
-          }
-          // do not stop automatically for no-speech, but for others we might stop
-          if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-            if (isListening) {
-              try { rec.stop(); } catch (e) {}
-            }
-          }
-        };
+  rec.onresult = (e) => {
+    // rebuild from scratch for accuracy
+    let f = '', i = '';
+    for (let k = 0; k < e.results.length; k++) {
+      const t = e.results[k][0].transcript;
+      if (e.results[k].isFinal) f += t;
+      else i += t;
+    }
+    finalText = f;
+    interimText = i;
+    renderLive();
+  };
 
-        rec.onend = () => {
-          // if we are supposed to be listening but recognition ended (e.g., browser stopped it)
-          // we can restart? but better to reflect actual state.
-          // if user didn't press stop, but recognition ended, set status to idle.
-          if (isListening) {
-            // if it ended unexpectedly, we set to idle and try to restart? we do not auto-restart to avoid loops.
-            setStatus(false);
-            // but we might want to keep the recognition object ready
-          }
-          // update UI badge
-          if (!isListening) {
-            updateLiveDisplay();
-          }
-        };
+  rec.onerror = (e) => {
+    log('❌ onerror: ' + e.error);
+    if (e.error === 'not-allowed')
+      log('   → Mic permission denied. Check site settings in browser.');
+    if (e.error === 'service-not-allowed')
+      log('   → Service blocked. Are you in an in-app browser?');
+    if (e.error === 'audio-capture')
+      log('   → No microphone found.');
+    if (e.error === 'network')
+      log('   → Network error reaching Google speech servers.');
+  };
 
-        rec.onstart = () => {
-          setStatus(true);
-          statusText.textContent = 'listening';
-          updateLiveDisplay();
-        };
+  rec.onend = () => {
+    log('🔚 onend');
+    setStatus(false, 'idle');
+    interimText = '';
+    renderLive();
+  };
+}
 
-        return rec;
-      }
+// ---------- Buttons ----------
+startBtn.onclick = async () => {
+  if (!rec) return;
+  log('--- Start tapped ---');
+  log('Calling getUserMedia…');
 
-      // ----- start listening -----
-      function startListening() {
-        if (isListening) return;
-        // if we have a recognition instance, we might need to recreate because of state.
-        // To ensure clean start, we recreate or reuse? Reuse is fine if not started.
-        // But if we call start() on already started, error. We'll create new if null or ended.
-        // Safer: always create a fresh instance? But then we lose previous final results if we restart.
-        // We'll keep the instance but if it's in "ended" state, start() works. However sometimes better to recreate.
-        // Let's reuse the same recognition object if it exists and we haven't cleared it.
-        // But if we previously called stop, we can call start again.
-        if (!recognition) {
-          recognition = initRecognition();
-        }
+  try {
+    // Force permission prompt BEFORE starting recognition.
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    log('✅ Permission granted');
+    stream.getTracks().forEach(t => t.stop());
 
-        // reset any interim before starting fresh? we want to keep final transcript from before?
-        // If the user wants to continue, we can keep finalTranscript. But to avoid confusion, we keep it.
-        // But interim from previous should be cleared.
-        interimTranscript = '';
-        // we do NOT clear finalTranscript here so you can continue building on previous speech.
-        // but if you want fresh start, use clear button.
-        // However, after Submit, we might want to clear live transcript? we don't automatically.
-        // (Submit copies to submitted, but live remains, which is intuitive.)
-
-        try {
-          recognition.start();
-          // setStatus will be called in onstart, but also set here to avoid delay
-          setStatus(true);
-        } catch (error) {
-          console.error('Start error:', error);
-          // If already started, we might need to stop then start.
-          if (error.name === 'InvalidStateError') {
-            // recognition already started
-            setStatus(true);
-          } else {
-            statusText.textContent = 'error: ' + error.message;
-            setStatus(false);
-          }
+    // Small delay helps some Android browsers
+    setTimeout(() => {
+      try {
+        rec.start();
+      } catch (err) {
+        log('❌ rec.start() threw: ' + err.name + ' — ' + err.message);
+        if (err.name === 'InvalidStateError') {
+          log('   → Already started. Trying stop+start…');
+          rec.stop();
+          setTimeout(() => rec.start(), 300);
         }
       }
+    }, 100);
 
-      // ----- stop listening -----
-      function stopListening() {
-        if (!recognition) return;
-        if (!isListening) return;
-        try {
-          recognition.stop();
-        } catch (e) {
-          console.warn('Stop error:', e);
-        }
-        setStatus(false);
-        // interim becomes empty? We keep final, interim should be cleared because it's not final.
-        // When stopped, we want to show final text only (interim may remain as orphan). Let's clear interim.
-        interimTranscript = '';
-        updateLiveDisplay();
-        liveBadge.textContent = 'paused';
-      }
+  } catch (err) {
+    log('❌ getUserMedia failed: ' + err.name);
+    log('   ' + err.message);
+    if (err.name === 'NotAllowedError')
+      log('   → You blocked the mic. Tap the 🔒 icon in address bar → allow.');
+    if (err.name === 'NotFoundError')
+      log('   → No microphone detected on device.');
+    setStatus(false, 'mic blocked');
+  }
+};
 
-      // ----- submit: copy live transcript to submitted area -----
-      function submitTranscript() {
-        // Combine final + interim (if any) for the submitted version? Usually you want the exact current transcript.
-        // We'll use final + interim as the complete current text.
-        let fullText = finalTranscript;
-        if (interimTranscript) {
-          if (fullText && !fullText.endsWith(' ') && interimTranscript.length > 0) {
-            fullText += ' ';
-          }
-          fullText += interimTranscript;
-        }
+stopBtn.onclick = () => {
+  if (rec) { try { rec.stop(); } catch(e){} }
+  log('Stop tapped');
+};
 
-        const trimmed = fullText.trim();
-        if (!trimmed) {
-          // If nothing to submit, show a hint
-          submittedEl.textContent = '⚠️ Nothing to submit — speak first.';
-          submittedEl.classList.add('placeholder');
-          return;
-        }
+submitBtn.onclick = () => {
+  const combined = (finalText + (interimText ? ' ' + interimText : '')).trim();
+  if (!combined) {
+    savedEl.textContent = '⚠️ Nothing to submit — speak first.';
+    savedEl.classList.add('placeholder');
+    return;
+  }
+  savedEl.textContent = combined;
+  savedEl.classList.remove('placeholder');
+  log('📥 Submitted: "' + combined.slice(0, 60) + (combined.length > 60 ? '…' : '') + '"');
+};
 
-        submittedEl.textContent = trimmed;
-        submittedEl.classList.remove('placeholder');
+clearBtn.onclick = () => {
+  if (listening && rec) { try { rec.stop(); } catch(e){} }
+  finalText = ''; interimText = '';
+  renderLive();
+  savedEl.textContent = 'Submitted text appears here.';
+  savedEl.classList.add('placeholder');
+  log('🧹 Cleared');
+};
 
-        // optional: give feedback
-        liveBadge.textContent = 'submitted';
-      }
-
-      // ----- clear everything (live + submitted) -----
-      function clearAll() {
-        // stop listening if active
-        if (isListening) {
-          stopListening();
-        }
-        // reset transcripts
-        finalTranscript = '';
-        interimTranscript = '';
-        updateLiveDisplay();
-
-        submittedEl.textContent = 'Submitted text will appear here after you click Submit.';
-        submittedEl.classList.add('placeholder');
-        liveBadge.textContent = 'interim';
-        statusText.textContent = 'idle';
-      }
-
-      // ----- attach event listeners -----
-      startBtn.addEventListener('click', startListening);
-      stopBtn.addEventListener('click', stopListening);
-      submitBtn.addEventListener('click', submitTranscript);
-      clearBtn.addEventListener('click', clearAll);
-
-      // Ensure recognition stops if page is unloaded
-      window.addEventListener('beforeunload', () => {
-        if (recognition && isListening) {
-          try { recognition.stop(); } catch (e) {}
-        }
-      });
-
-      // Initial UI state
-      setStatus(false);
-      updateLiveDisplay();
-
-      // Initialize recognition object (but don't start)
-      recognition = initRecognition();
-
-      // If any result comes with empty, keep placeholder
-    })();
-  </script>
+setStatus(false, 'idle');
+renderLive();
+</script>
 </body>
 </html>
