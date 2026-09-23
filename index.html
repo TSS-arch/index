@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Speech to Text</title>
+<title>Speech to Text — runs until Stop</title>
 <style>
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
     font-family: system-ui, -apple-system, sans-serif;
     margin: 0; padding: 16px;
@@ -66,7 +66,7 @@
 <body>
 
   <h1>🎤 Speech to Text</h1>
-  <div class="sub">Tap Start, allow mic, and speak. Tap Submit to freeze.</div>
+  <div class="sub">Runs continuously until you tap <strong>Stop</strong>.</div>
 
   <div class="box">
     <h3>🔴 Live transcript</h3>
@@ -92,14 +92,14 @@
   <div id="log">Diagnostics…</div>
 
 <script>
-const logEl = document.getElementById('log');
-const liveEl = document.getElementById('live');
-const savedEl = document.getElementById('saved');
-const startBtn = document.getElementById('startBtn');
-const stopBtn = document.getElementById('stopBtn');
+const logEl     = document.getElementById('log');
+const liveEl    = document.getElementById('live');
+const savedEl   = document.getElementById('saved');
+const startBtn  = document.getElementById('startBtn');
+const stopBtn   = document.getElementById('stopBtn');
 const submitBtn = document.getElementById('submitBtn');
-const clearBtn = document.getElementById('clearBtn');
-const dot = document.getElementById('dot');
+const clearBtn  = document.getElementById('clearBtn');
+const dot       = document.getElementById('dot');
 const statusTxt = document.getElementById('statusTxt');
 
 function log(m) { logEl.textContent += '\n' + m; console.log(m); }
@@ -112,21 +112,18 @@ log('Host: ' + location.host);
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 log('SpeechRecognition: ' + (SR ? 'YES' : 'NO'));
 
-if (!window.isSecureContext) {
-  log('❌ NOT SECURE — must use https:// or localhost');
-}
-if (!SR) {
-  log('❌ Not supported. Use Chrome/Android or Safari/iOS.');
-  log('   (In-app browsers like Instagram/Facebook do NOT work.)');
-}
+if (!window.isSecureContext) log('❌ NOT SECURE — use https:// or localhost');
+if (!SR) log('❌ Not supported. Use Chrome/Android or Safari/iOS.');
 
 // ---------- State ----------
 let rec = null;
-let listening = false;
+let listening = false;          // is the user's intent "keep listening"?
+let intentionalStop = false;    // true when user tapped Stop/Clear
+let restarting = false;         // guard against double restarts
 let finalText = '';
 let interimText = '';
 
-// ---------- UI helpers ----------
+// ---------- UI ----------
 function renderLive() {
   const combined = (finalText + (interimText ? ' ' + interimText : '')).trim();
   if (!combined) {
@@ -153,18 +150,18 @@ if (SR) {
   rec = new SR();
   rec.continuous = true;
   rec.interimResults = true;
-  rec.lang = 'en-US';   // change to 'en-IN' for Indian English
+  rec.lang = 'en-US';   // change to 'en-IN' if needed
 
   rec.onstart = () => {
+    restarting = false;
     log('✅ onstart');
-    setStatus(true, 'listening');
+    if (listening) setStatus(true, 'listening');
   };
 
   rec.onspeechstart = () => log('🗣 speech detected');
-  rec.onspeechend = () => log('🤐 speech ended');
+  rec.onspeechend    = () => log('🤐 speech ended');
 
   rec.onresult = (e) => {
-    // rebuild from scratch for accuracy
     let f = '', i = '';
     for (let k = 0; k < e.results.length; k++) {
       const t = e.results[k][0].transcript;
@@ -178,21 +175,45 @@ if (SR) {
 
   rec.onerror = (e) => {
     log('❌ onerror: ' + e.error);
-    if (e.error === 'not-allowed')
-      log('   → Mic permission denied. Check site settings in browser.');
-    if (e.error === 'service-not-allowed')
-      log('   → Service blocked. Are you in an in-app browser?');
-    if (e.error === 'audio-capture')
-      log('   → No microphone found.');
-    if (e.error === 'network')
-      log('   → Network error reaching Google speech servers.');
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      // permission problem — stop trying
+      intentionalStop = true;
+      listening = false;
+      setStatus(false, 'mic blocked');
+      log('   → Permission blocked. Cannot continue.');
+    }
+    if (e.error === 'audio-capture') log('   → No microphone found.');
+    if (e.error === 'network')       log('   → Network error to speech service.');
+    // 'no-speech' — ignore, we'll auto-restart
   };
 
   rec.onend = () => {
     log('🔚 onend');
-    setStatus(false, 'idle');
-    interimText = '';
-    renderLive();
+    // KEY FIX: if user still wants to listen, restart automatically.
+    if (listening && !intentionalStop) {
+      log('↻ restarting (silence timeout)…');
+      restarting = true;
+      // tiny delay helps mobile browsers
+      setTimeout(() => {
+        if (!listening || intentionalStop) return;
+        try {
+          rec.start();
+        } catch (err) {
+          log('❌ restart failed: ' + err.name + ' — trying again');
+          // try one more time after a longer delay
+          setTimeout(() => {
+            if (listening && !intentionalStop) {
+              try { rec.start(); } catch(e) { log('❌ give up: ' + e.name); }
+            }
+          }, 600);
+        }
+      }, 250);
+    } else {
+      // user-initiated stop
+      setStatus(false, 'idle');
+      interimText = '';
+      renderLive();
+    }
   };
 }
 
@@ -200,42 +221,48 @@ if (SR) {
 startBtn.onclick = async () => {
   if (!rec) return;
   log('--- Start tapped ---');
-  log('Calling getUserMedia…');
+
+  intentionalStop = false;
+  listening = true;
 
   try {
-    // Force permission prompt BEFORE starting recognition.
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     log('✅ Permission granted');
     stream.getTracks().forEach(t => t.stop());
 
-    // Small delay helps some Android browsers
+    // give a small gap so the mic is released, then start
     setTimeout(() => {
+      if (!listening) return;
       try {
         rec.start();
+        setStatus(true, 'listening');
       } catch (err) {
-        log('❌ rec.start() threw: ' + err.name + ' — ' + err.message);
+        log('❌ start threw: ' + err.name);
         if (err.name === 'InvalidStateError') {
-          log('   → Already started. Trying stop+start…');
-          rec.stop();
-          setTimeout(() => rec.start(), 300);
+          try { rec.stop(); } catch(e){}
+          setTimeout(() => { if (listening) rec.start(); }, 400);
         }
       }
-    }, 100);
+    }, 150);
 
   } catch (err) {
     log('❌ getUserMedia failed: ' + err.name);
     log('   ' + err.message);
     if (err.name === 'NotAllowedError')
-      log('   → You blocked the mic. Tap the 🔒 icon in address bar → allow.');
-    if (err.name === 'NotFoundError')
-      log('   → No microphone detected on device.');
+      log('   → Blocked. Tap 🔒 in address bar → allow Microphone → reload.');
+    listening = false;
     setStatus(false, 'mic blocked');
   }
 };
 
 stopBtn.onclick = () => {
+  log('⏹ Stop tapped — will not restart.');
+  intentionalStop = true;
+  listening = false;
   if (rec) { try { rec.stop(); } catch(e){} }
-  log('Stop tapped');
+  setStatus(false, 'idle');
+  interimText = '';
+  renderLive();
 };
 
 submitBtn.onclick = () => {
@@ -247,15 +274,18 @@ submitBtn.onclick = () => {
   }
   savedEl.textContent = combined;
   savedEl.classList.remove('placeholder');
-  log('📥 Submitted: "' + combined.slice(0, 60) + (combined.length > 60 ? '…' : '') + '"');
+  log('📥 Submitted ' + combined.length + ' chars');
 };
 
 clearBtn.onclick = () => {
-  if (listening && rec) { try { rec.stop(); } catch(e){} }
+  intentionalStop = true;
+  listening = false;
+  if (rec) { try { rec.stop(); } catch(e){} }
   finalText = ''; interimText = '';
   renderLive();
   savedEl.textContent = 'Submitted text appears here.';
   savedEl.classList.add('placeholder');
+  setStatus(false, 'idle');
   log('🧹 Cleared');
 };
 
