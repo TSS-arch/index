@@ -2,295 +2,751 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Speech to Text — runs until Stop</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1b4f72">
+<title>Speech to Text — Multilingual</title>
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  body {
-    font-family: system-ui, -apple-system, sans-serif;
-    margin: 0; padding: 16px;
-    background: #f0f4fa; min-height: 100vh;
+  html, body {
+    margin: 0; padding: 0;
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans Bengali', 'Noto Sans Devanagari', sans-serif;
+    background: #eef3f9; min-height: 100vh;
+    overscroll-behavior: none;
   }
-  h1 { font-size: 1.4rem; color: #0b2a3e; margin: 0 0 4px; }
-  .sub { color: #4a6a85; font-size: 0.9rem; margin-bottom: 16px; }
+  body { padding: 14px; padding-bottom: 30px; }
+
+  h1 { font-size: 1.3rem; color: #0b2a3e; margin: 0 0 2px; display:flex; align-items:center; gap:8px; }
+  h1 .pill {
+    font-size: 0.65rem; background: #1b4f72; color:#fff;
+    padding: 3px 9px; border-radius: 20px; font-weight:600;
+    letter-spacing: 0.5px;
+  }
+  .sub { color: #4a6a85; font-size: 0.85rem; margin-bottom: 12px; }
+
+  /* Language selector */
+  .lang-bar {
+    display: flex; gap: 6px; margin-bottom: 12px;
+    background: #fff; padding: 6px; border-radius: 14px;
+    border: 2px solid #d0dfee; box-shadow: 0 4px 14px rgba(20,50,80,0.05);
+  }
+  .lang-btn {
+    flex: 1; padding: 10px 6px; font-size: 14px;
+    font-weight: 600; border: none; border-radius: 10px;
+    cursor: pointer; background: #eef3f9; color: #3a5b78;
+    transition: 0.15s; touch-action: manipulation;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    line-height: 1.2;
+  }
+  .lang-btn .native { font-size: 15px; }
+  .lang-btn .code {
+    font-size: 0.65rem; opacity: 0.7; font-weight: 500;
+    letter-spacing: 0.5px; text-transform: uppercase;
+  }
+  .lang-btn.active {
+    background: #1b4f72; color: #fff;
+    box-shadow: 0 4px 12px rgba(27,79,114,0.35);
+  }
+  .lang-btn.active .code { opacity: 0.85; }
+  .lang-btn:active { transform: scale(0.97); }
+  .lang-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
   .box {
-    background: #fff; border-radius: 16px; padding: 16px;
-    margin-bottom: 14px; border: 2px solid #d0dfee;
-    box-shadow: 0 4px 12px rgba(20,50,80,0.06);
+    background: #fff; border-radius: 16px; padding: 14px 16px;
+    margin-bottom: 12px; border: 2px solid #d0dfee;
+    box-shadow: 0 4px 14px rgba(20,50,80,0.05);
   }
   .box h3 {
-    margin: 0 0 8px; font-size: 0.75rem; text-transform: uppercase;
-    letter-spacing: 0.5px; color: #3a5b78;
+    margin: 0 0 8px; font-size: 0.7rem; text-transform: uppercase;
+    letter-spacing: 0.6px; color: #3a5b78; font-weight: 700;
+    display: flex; justify-content: space-between; align-items:center;
+    gap: 8px;
+  }
+  .box h3 .meta {
+    font-size: 0.65rem; color: #7d95aa; font-weight: 500;
+    text-transform: none; letter-spacing: 0;
   }
   #live, #saved {
-    font-size: 1.15rem; line-height: 1.5; color: #102b3f;
-    min-height: 3rem; white-space: pre-wrap; word-break: break-word;
+    font-size: 1.15rem; line-height: 1.65; color: #102b3f;
+    min-height: 2.5rem; max-height: 40vh; overflow-y: auto;
+    white-space: pre-wrap; word-break: break-word;
+    -webkit-user-select: text; user-select: text;
   }
-  #live.interim { color: #1e5e7e; font-style: italic; }
+  #live.interim { color: #1e5e7e; }
+  #live.interim::after {
+    content: '▍'; color: #1b4f72; animation: blink 1s steps(2) infinite;
+    margin-left: 1px;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
   .placeholder { color: #8aa3b8; font-style: italic; }
-  .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  /* Session language tag inside transcript */
+  .lang-tag {
+    display: inline-block; font-size: 0.6rem; font-weight: 700;
+    padding: 1px 6px; border-radius: 8px; margin-right: 6px;
+    vertical-align: middle; letter-spacing: 0.4px;
+    text-transform: uppercase; opacity: 0.85;
+  }
+  .lang-tag.en { background: #dbeafe; color: #1e40af; }
+  .lang-tag.bn { background: #fce7f3; color: #9d174d; }
+  .lang-tag.hi { background: #fef3c7; color: #92400e; }
+
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
   button {
-    flex: 1 1 auto; padding: 14px 16px; font-size: 15px;
+    flex: 1 1 auto; padding: 14px 12px; font-size: 15px;
     font-weight: 600; border: none; border-radius: 12px;
     cursor: pointer; color: #fff; background: #1b4f72;
-    transition: 0.15s;
+    transition: transform 0.1s, opacity 0.15s;
+    touch-action: manipulation;
   }
   button:active { transform: scale(0.97); }
-  button:disabled { opacity: 0.45; }
+  button:disabled { opacity: 0.4; }
   button.alt { background: #eaf1f9; color: #10344b; }
   button.red { background: #b13e3e; }
+  button.green { background: #1f8a4c; }
+
   #status {
     display: flex; align-items: center; gap: 8px;
     font-size: 0.85rem; color: #225577; font-weight: 500;
-    margin-top: 10px;
+    margin-top: 8px; padding: 8px 12px;
+    background: #fff; border-radius: 12px; border: 1px solid #d8e5f0;
   }
   .dot {
-    width: 10px; height: 10px; border-radius: 50%; background: #9aaec2;
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #9aaec2; flex-shrink: 0; transition: 0.2s;
   }
   .dot.on {
     background: #2ecc71;
     box-shadow: 0 0 0 4px rgba(46,204,113,0.25);
     animation: pulse 1.3s infinite;
   }
-  @keyframes pulse {
-    0%,100% { opacity: 1; } 50% { opacity: 0.5; }
-  }
+  .dot.warn { background: #e6a817; box-shadow: 0 0 0 4px rgba(230,168,23,0.25); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
   #log {
-    background: #0d1b26; color: #6ee7a8; font-family: monospace;
-    font-size: 12px; padding: 12px; border-radius: 12px;
-    white-space: pre-wrap; max-height: 180px; overflow-y: auto;
-    margin-top: 12px;
+    background: #0d1b26; color: #6ee7a8; font-family: ui-monospace, monospace;
+    font-size: 11px; padding: 10px 12px; border-radius: 12px;
+    white-space: pre-wrap; max-height: 130px; overflow-y: auto;
+    margin-top: 10px; line-height: 1.5;
+  }
+  #log .err { color: #ff8a8a; }
+  #log .warn { color: #ffd479; }
+  #log .info { color: #6ecfff; }
+
+  details summary {
+    cursor: pointer; color: #4a6a85; font-size: 0.8rem;
+    padding: 6px 0; user-select: none;
+  }
+
+  .auto-hint {
+    font-size: 0.7rem; color: #7d95aa; text-align: center;
+    margin-top: -4px; margin-bottom: 8px; font-style: italic;
   }
 </style>
 </head>
 <body>
 
-  <h1>🎤 Speech to Text</h1>
-  <div class="sub">Runs continuously until you tap <strong>Stop</strong>.</div>
+  <h1>🎤 Speech to Text <span class="pill">MULTI</span></h1>
+  <div class="sub">English · বাংলা · हिन्दी — tap a language, then Start</div>
+
+  <!-- Language picker -->
+  <div class="lang-bar" id="langBar">
+    <button class="lang-btn active" data-lang="en-IN" data-code="en">
+      <span class="native">English</span>
+      <span class="code">en-IN</span>
+    </button>
+    <button class="lang-btn" data-lang="bn-IN" data-code="bn">
+      <span class="native">বাংলা</span>
+      <span class="code">bn-IN</span>
+    </button>
+    <button class="lang-btn" data-lang="hi-IN" data-code="hi">
+      <span class="native">हिन्दी</span>
+      <span class="code">hi-IN</span>
+    </button>
+  </div>
+  <div class="auto-hint">Tap a language. You can switch mid-session — text is preserved.</div>
 
   <div class="box">
-    <h3>🔴 Live transcript</h3>
-    <div id="live" class="placeholder">Tap "Start listening" and speak…</div>
+    <h3>
+      <span>🔴 Live transcript</span>
+      <span class="meta" id="liveMeta">0 words · 0:00</span>
+    </h3>
+    <div id="live" class="placeholder">Tap "Start" and speak…</div>
   </div>
 
   <div class="box">
-    <h3>✅ Submitted text</h3>
+    <h3>
+      <span>✅ Submitted</span>
+      <span class="meta" id="savedMeta"></span>
+    </h3>
     <div id="saved" class="placeholder">Submitted text appears here.</div>
   </div>
 
   <div class="btns">
-    <button id="startBtn">▶ Start listening</button>
+    <button id="startBtn">▶ Start</button>
     <button id="stopBtn" class="alt" disabled>⏹ Stop</button>
   </div>
-  <div class="btns" style="margin-top:8px;">
-    <button id="submitBtn">📥 Submit</button>
+  <div class="btns">
+    <button id="submitBtn" class="green">📥 Submit</button>
+    <button id="copyBtn" class="alt">📋 Copy</button>
     <button id="clearBtn" class="red">🧹 Clear</button>
   </div>
 
-  <div id="status"><span class="dot" id="dot"></span><span id="statusTxt">idle</span></div>
+  <div id="status">
+    <span class="dot" id="dot"></span>
+    <span id="statusTxt">idle</span>
+    <span style="margin-left:auto;font-size:0.75rem;color:#7d95aa;" id="restartCount"></span>
+  </div>
 
-  <div id="log">Diagnostics…</div>
+  <details>
+    <summary>▸ Diagnostics</summary>
+    <div id="log">Booting…</div>
+  </details>
 
 <script>
-const logEl     = document.getElementById('log');
-const liveEl    = document.getElementById('live');
-const savedEl   = document.getElementById('saved');
-const startBtn  = document.getElementById('startBtn');
-const stopBtn   = document.getElementById('stopBtn');
-const submitBtn = document.getElementById('submitBtn');
-const clearBtn  = document.getElementById('clearBtn');
-const dot       = document.getElementById('dot');
-const statusTxt = document.getElementById('statusTxt');
+/* =====================================================================
+   Speech-to-Text — Multilingual (English / Bengali / Hindi)
+   - One language per recognition session (Web Speech API limitation)
+   - Switching language mid-session keeps your text and restarts cleanly
+   - Deduplicates across restarts
+   - Survives silence timeouts
+   ===================================================================== */
 
-function log(m) { logEl.textContent += '\n' + m; console.log(m); }
+const $ = id => document.getElementById(id);
+const logEl      = $('log');
+const liveEl     = $('live');
+const savedEl    = $('saved');
+const liveMeta   = $('liveMeta');
+const savedMeta  = $('savedMeta');
+const startBtn   = $('startBtn');
+const stopBtn    = $('stopBtn');
+const submitBtn  = $('submitBtn');
+const copyBtn    = $('copyBtn');
+const clearBtn   = $('clearBtn');
+const dot        = $('dot');
+const statusTxt  = $('statusTxt');
+const restartCountEl = $('restartCount');
+const langBar    = $('langBar');
 
-// ---------- Diagnostics ----------
-log('Protocol: ' + location.protocol);
-log('Secure context: ' + window.isSecureContext);
-log('Host: ' + location.host);
+function log(msg, cls) {
+  const color = cls === 'err' ? '#ff8a8a' : cls === 'warn' ? '#ffd479' : cls === 'info' ? '#6ecfff' : '#6ee7a8';
+  const time = new Date().toTimeString().slice(0,8);
+  logEl.innerHTML += `<div style="color:${color}">[${time}] ${msg}</div>`;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+/* ---------- Config ---------- */
+const CONFIG = {
+  defaultLang: 'en-IN',
+  restartDelay: 250,
+  maxRestartDelay: 2500,
+  maxRestartsInARow: 50,
+  keepAlive: true
+};
+
+/* ---------- Language state ---------- */
+let currentLang = CONFIG.defaultLang;
+let currentCode = 'en';
+
+/* ---------- Diagnostics ---------- */
+log('Protocol: ' + location.protocol, 'info');
+log('Secure: ' + window.isSecureContext, 'info');
 
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-log('SpeechRecognition: ' + (SR ? 'YES' : 'NO'));
+log('SpeechRecognition: ' + (SR ? '✅ YES' : '❌ NO'), SR ? '' : 'err');
+if (!SR) log('Use Chrome/Android or Safari/iOS.', 'err');
 
-if (!window.isSecureContext) log('❌ NOT SECURE — use https:// or localhost');
-if (!SR) log('❌ Not supported. Use Chrome/Android or Safari/iOS.');
-
-// ---------- State ----------
+/* ---------- State ---------- */
 let rec = null;
-let listening = false;          // is the user's intent "keep listening"?
-let intentionalStop = false;    // true when user tapped Stop/Clear
-let restarting = false;         // guard against double restarts
-let finalText = '';
-let interimText = '';
+let listening = false;
+let intentionalStop = false;
+let restarting = false;
+let restartCount = 0;
+let consecutiveRestarts = 0;
+let currentDelay = CONFIG.restartDelay;
 
-// ---------- UI ----------
+// Text: stored as segments, each with its language tag
+// e.g. [{lang:'en', text:'hello'}, {lang:'bn', text:'কেমন আছো'}]
+let segments = [];
+
+// Current session (transient)
+let sessionFinalText = '';
+let currentInterim = '';
+let sessionLangCode = currentCode;
+let sessionLangFull = currentLang;
+
+// Timer
+let sessionStartTime = null;
+let totalSeconds = 0;
+let timerInterval = null;
+
+// Keep-awake
+let wakeLock = null;
+let silentAudio = null;
+
+/* ---------- Keep-awake ---------- */
+async function enableKeepAwake() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      log('🔆 wake lock acquired');
+      wakeLock.addEventListener('release', () => log('wake lock released', 'warn'));
+      return;
+    }
+  } catch (e) { log('wake lock failed: ' + e.message, 'warn'); }
+
+  if (CONFIG.keepAlive && !silentAudio) {
+    try {
+      const silentWav = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+      silentAudio = new Audio(silentWav);
+      silentAudio.loop = true;
+      silentAudio.volume = 0.001;
+      await silentAudio.play();
+      log('🔇 silent-audio keep-alive started');
+    } catch (e) { log('silent audio failed: ' + e.message, 'warn'); }
+  }
+}
+function disableKeepAwake() {
+  if (wakeLock) { try { wakeLock.release(); } catch(e){} wakeLock = null; }
+  if (silentAudio) { try { silentAudio.pause(); silentAudio = null; } catch(e){} }
+}
+
+/* ---------- Deduplication ---------- */
+function normalizeWords(s) {
+  return s.toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, '')
+    .split(/\s+/)
+    .filter(Boolean);
+}
+function overlapWords(a, b) {
+  const A = normalizeWords(a), B = normalizeWords(b);
+  if (!A.length || !B.length) return 0;
+  const max = Math.min(A.length, B.length, 30);
+  for (let len = max; len > 0; len--) {
+    let match = true;
+    for (let i = 0; i < len; i++) {
+      if (A[A.length - len + i] !== B[i]) { match = false; break; }
+    }
+    if (match) return len;
+  }
+  return 0;
+}
+function smartAppend(A, B) {
+  if (!B || !B.trim()) return A || '';
+  if (!A || !A.trim()) return B.trim();
+  const overlap = overlapWords(A, B);
+  const Bwords = B.trim().split(/\s+/).filter(Boolean);
+  if (overlap === 0) return (A.trim() + ' ' + B.trim()).replace(/\s+/g, ' ').trim();
+  const newWords = Bwords.slice(overlap).join(' ');
+  if (!newWords) return A.trim();
+  return (A.trim() + ' ' + newWords).replace(/\s+/g, ' ').trim();
+}
+
+/* ---------- Build display text from segments ---------- */
+function buildSegmentsText(includeInterim = true) {
+  let out = '';
+  // committed segments
+  for (const seg of segments) {
+    const tag = `<span class="lang-tag ${seg.lang}">${seg.lang}</span>`;
+    out += tag + escapeHtml(seg.text) + ' ';
+  }
+  // current session final
+  if (sessionFinalText.trim()) {
+    const tag = `<span class="lang-tag ${sessionLangCode}">${sessionLangCode}</span>`;
+    out += tag + escapeHtml(sessionFinalText.trim()) + ' ';
+  }
+  // interim
+  if (includeInterim && currentInterim.trim()) {
+    const tag = `<span class="lang-tag ${sessionLangCode}">${sessionLangCode}</span>`;
+    out += tag + '<em>' + escapeHtml(currentInterim.trim()) + '</em>';
+  }
+  return out.trim();
+}
+
+function plainText() {
+  // Plain text version (no HTML tags), for Submit/Copy
+  let out = '';
+  for (const seg of segments) out += seg.text + ' ';
+  if (sessionFinalText.trim()) out += sessionFinalText.trim() + ' ';
+  if (currentInterim.trim()) out += currentInterim.trim();
+  return out.replace(/\s+/g, ' ').trim();
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+/* ---------- UI ---------- */
+function wordCount(text) {
+  return text.trim() ? text.trim().split(/\s+/).length : 0;
+}
+function formatTime(sec) {
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return m + ':' + String(s).padStart(2, '0');
+}
+
 function renderLive() {
-  const combined = (finalText + (interimText ? ' ' + interimText : '')).trim();
-  if (!combined) {
-    liveEl.textContent = 'Tap "Start listening" and speak…';
+  const html = buildSegmentsText(true);
+  if (!html) {
+    liveEl.textContent = 'Tap "Start" and speak…';
     liveEl.classList.add('placeholder');
     liveEl.classList.remove('interim');
   } else {
-    liveEl.textContent = combined;
+    liveEl.innerHTML = html;
     liveEl.classList.remove('placeholder');
-    liveEl.classList.toggle('interim', interimText.length > 0);
+    liveEl.classList.toggle('interim', !!currentInterim.trim());
   }
+  const wc = wordCount(plainText());
+  const secs = totalSeconds + (sessionStartTime ? Math.floor((Date.now() - sessionStartTime)/1000) : 0);
+  liveMeta.textContent = wc + ' words · ' + formatTime(secs) + ' · ' + currentCode;
+  liveEl.scrollTop = liveEl.scrollHeight;
 }
 
-function setStatus(on, label) {
+function setStatus(on, label, warn) {
   listening = on;
   dot.classList.toggle('on', on);
-  statusTxt.textContent = label || (on ? 'listening' : 'idle');
+  dot.classList.toggle('warn', !!warn);
+  statusTxt.textContent = label || (on ? 'listening · ' + currentCode : 'idle');
   startBtn.disabled = on;
   stopBtn.disabled = !on;
 }
 
-// ---------- Build recognizer ----------
-if (SR) {
-  rec = new SR();
-  rec.continuous = true;
-  rec.interimResults = true;
-  rec.lang = 'en-US';   // change to 'en-IN' if needed
+function updateRestartBadge() {
+  restartCountEl.textContent = restartCount ? '↻ ' + restartCount : '';
+}
 
-  rec.onstart = () => {
+/* ---------- Timer ---------- */
+function startTimer() {
+  if (timerInterval) return;
+  sessionStartTime = Date.now();
+  timerInterval = setInterval(() => renderLive(), 1000);
+}
+function stopTimer() {
+  if (sessionStartTime) {
+    totalSeconds += Math.floor((Date.now() - sessionStartTime)/1000);
+    sessionStartTime = null;
+  }
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+}
+function resetTimer() { stopTimer(); totalSeconds = 0; }
+
+/* ---------- Commit session final to segments ---------- */
+function commitSession() {
+  if (sessionFinalText.trim()) {
+    // If last segment has same lang, merge into it (smart append)
+    const last = segments[segments.length - 1];
+    if (last && last.lang === sessionLangCode) {
+      last.text = smartAppend(last.text, sessionFinalText.trim());
+    } else {
+      segments.push({
+        lang: sessionLangCode,
+        langFull: sessionLangFull,
+        text: sessionFinalText.trim()
+      });
+    }
+  }
+  sessionFinalText = '';
+  currentInterim = '';
+}
+
+/* ---------- Recognizer ---------- */
+function buildRecognizer() {
+  const r = new SR();
+  r.continuous = true;
+  r.interimResults = true;
+  r.lang = currentLang;
+  r.maxAlternatives = 1;
+
+  r.onstart = () => {
     restarting = false;
-    log('✅ onstart');
-    if (listening) setStatus(true, 'listening');
+    consecutiveRestarts = 0;
+    currentDelay = CONFIG.restartDelay;
+    log('✅ onstart · lang=' + currentLang, 'info');
+    if (listening) setStatus(true);
+    if (!timerInterval) startTimer();
   };
 
-  rec.onspeechstart = () => log('🗣 speech detected');
-  rec.onspeechend    = () => log('🤐 speech ended');
+  r.onspeechstart = () => log('🗣 speech (' + currentCode + ')');
+  r.onspeechend = () => log('🤐 silence');
 
-  rec.onresult = (e) => {
-    let f = '', i = '';
-    for (let k = 0; k < e.results.length; k++) {
-      const t = e.results[k][0].transcript;
-      if (e.results[k].isFinal) f += t;
-      else i += t;
+  r.onresult = (e) => {
+    let newSessionFinal = '';
+    let newInterim = '';
+    for (let i = 0; i < e.results.length; i++) {
+      const res = e.results[i];
+      const t = res[0].transcript;
+      if (res.isFinal) newSessionFinal += t;
+      else newInterim += t;
     }
-    finalText = f;
-    interimText = i;
+    sessionFinalText = smartAppend(sessionFinalText, newSessionFinal);
+    currentInterim = newInterim.trim();
     renderLive();
   };
 
-  rec.onerror = (e) => {
-    log('❌ onerror: ' + e.error);
-    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-      // permission problem — stop trying
-      intentionalStop = true;
-      listening = false;
-      setStatus(false, 'mic blocked');
-      log('   → Permission blocked. Cannot continue.');
+  r.onerror = (e) => {
+    log('❌ error: ' + e.error, 'err');
+    switch (e.error) {
+      case 'not-allowed':
+      case 'service-not-allowed':
+        intentionalStop = true;
+        listening = false;
+        setStatus(false, 'mic blocked', true);
+        log('   → Tap 🔒 → allow Microphone → reload', 'err');
+        break;
+      case 'audio-capture':
+        log('   → No microphone detected', 'err');
+        break;
+      case 'network':
+        log('   → Network error', 'warn');
+        break;
+      case 'no-speech':
+      case 'aborted':
+        break;
+      default:
+        log('   → ' + e.error, 'warn');
     }
-    if (e.error === 'audio-capture') log('   → No microphone found.');
-    if (e.error === 'network')       log('   → Network error to speech service.');
-    // 'no-speech' — ignore, we'll auto-restart
   };
 
-  rec.onend = () => {
-    log('🔚 onend');
-    // KEY FIX: if user still wants to listen, restart automatically.
+  r.onend = () => {
+    log('🔚 onend', 'info');
+    // Save whatever we have
     if (listening && !intentionalStop) {
-      log('↻ restarting (silence timeout)…');
-      restarting = true;
-      // tiny delay helps mobile browsers
-      setTimeout(() => {
-        if (!listening || intentionalStop) return;
-        try {
-          rec.start();
-        } catch (err) {
-          log('❌ restart failed: ' + err.name + ' — trying again');
-          // try one more time after a longer delay
-          setTimeout(() => {
-            if (listening && !intentionalStop) {
-              try { rec.start(); } catch(e) { log('❌ give up: ' + e.name); }
-            }
-          }, 600);
+      // keep sessionFinalText as-is; it'll be committed on lang switch or stop
+      // but if recognizer restarted, we need to commit current session so next
+      // session doesn't reset it. Commit here and start fresh session text.
+      if (sessionFinalText.trim()) {
+        // merge into last segment of same lang OR new segment
+        const last = segments[segments.length - 1];
+        if (last && last.lang === sessionLangCode) {
+          last.text = smartAppend(last.text, sessionFinalText.trim());
+        } else {
+          segments.push({
+            lang: sessionLangCode,
+            langFull: sessionLangFull,
+            text: sessionFinalText.trim()
+          });
         }
-      }, 250);
+        sessionFinalText = '';
+      }
+      currentInterim = '';
+      renderLive();
+
+      consecutiveRestarts++;
+      restartCount++;
+      if (consecutiveRestarts > CONFIG.maxRestartsInARow) {
+        log('⛔ too many restarts — pausing 5s', 'warn');
+        consecutiveRestarts = 0;
+        setTimeout(() => { if (listening && !intentionalStop) safeStart(); }, 5000);
+        return;
+      }
+      log('↻ restart #' + restartCount + ' in ' + currentDelay + 'ms', 'warn');
+      updateRestartBadge();
+      setTimeout(() => { if (listening && !intentionalStop) safeStart(); }, currentDelay);
+      currentDelay = Math.min(currentDelay * 1.4, CONFIG.maxRestartDelay);
     } else {
-      // user-initiated stop
+      // real stop
+      commitSession();
+      stopTimer();
       setStatus(false, 'idle');
-      interimText = '';
       renderLive();
     }
   };
+
+  return r;
 }
 
-// ---------- Buttons ----------
-startBtn.onclick = async () => {
+function safeStart() {
   if (!rec) return;
-  log('--- Start tapped ---');
+  if (restarting) return;
+  restarting = true;
+  try {
+    rec.start();
+  } catch (err) {
+    restarting = false;
+    log('❌ start threw: ' + err.name, 'err');
+    if (err.name === 'InvalidStateError') {
+      try { rec.stop(); } catch(e){}
+      setTimeout(() => { if (listening && !intentionalStop) safeStart(); }, 400);
+    } else {
+      setTimeout(() => { if (listening && !intentionalStop) safeStart(); }, 800);
+    }
+  }
+}
 
+/* ---------- Language switching ---------- */
+function setLanguage(langFull, langCode, btn) {
+  if (currentLang === langFull && currentCode === langCode) return;
+
+  log('🌐 switching language → ' + langFull, 'info');
+
+  // Update UI
+  Array.from(langBar.children).forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  // If currently listening, gracefully commit + restart with new lang
+  if (listening && rec) {
+    // commit session final into segments
+    if (sessionFinalText.trim()) {
+      const last = segments[segments.length - 1];
+      if (last && last.lang === sessionLangCode) {
+        last.text = smartAppend(last.text, sessionFinalText.trim());
+      } else {
+        segments.push({
+          lang: sessionLangCode,
+          langFull: sessionLangFull,
+          text: sessionFinalText.trim()
+        });
+      }
+      sessionFinalText = '';
+    }
+    currentInterim = '';
+
+    // update state
+    currentLang = langFull;
+    currentCode = langCode;
+    sessionLangCode = langCode;
+    sessionLangFull = langFull;
+
+    // restart recognizer with new lang
+    try { rec.stop(); } catch(e){}
+    // onend will fire, but since listening=true and !intentionalStop, it will
+    // restart using the OLD instance's lang. So we need to build a fresh one.
+    // Simpler: replace rec now.
+    rec = buildRecognizer();
+    setTimeout(() => {
+      if (listening && !intentionalStop) safeStart();
+    }, 300);
+  } else {
+    currentLang = langFull;
+    currentCode = langCode;
+    sessionLangCode = langCode;
+    sessionLangFull = langFull;
+    renderLive();
+  }
+
+  // Update status label
+  if (listening) statusTxt.textContent = 'listening · ' + currentCode;
+}
+
+// Attach language button handlers
+Array.from(langBar.children).forEach(btn => {
+  btn.addEventListener('click', () => {
+    setLanguage(btn.dataset.lang, btn.dataset.code, btn);
+  });
+});
+
+/* ---------- Buttons ---------- */
+startBtn.onclick = async () => {
+  if (!SR) return;
+  log('--- Start ---', 'info');
   intentionalStop = false;
   listening = true;
+  restarting = false;
+  consecutiveRestarts = 0;
+  currentDelay = CONFIG.restartDelay;
+  sessionLangCode = currentCode;
+  sessionLangFull = currentLang;
+
+  if (!rec) rec = buildRecognizer();
 
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    log('✅ Permission granted');
+    log('✅ mic permission granted');
     stream.getTracks().forEach(t => t.stop());
-
-    // give a small gap so the mic is released, then start
-    setTimeout(() => {
-      if (!listening) return;
-      try {
-        rec.start();
-        setStatus(true, 'listening');
-      } catch (err) {
-        log('❌ start threw: ' + err.name);
-        if (err.name === 'InvalidStateError') {
-          try { rec.stop(); } catch(e){}
-          setTimeout(() => { if (listening) rec.start(); }, 400);
-        }
-      }
-    }, 150);
-
   } catch (err) {
-    log('❌ getUserMedia failed: ' + err.name);
-    log('   ' + err.message);
+    log('❌ getUserMedia: ' + err.name, 'err');
     if (err.name === 'NotAllowedError')
-      log('   → Blocked. Tap 🔒 in address bar → allow Microphone → reload.');
+      log('   → Tap 🔒 → Permissions → Microphone → Allow, then reload', 'err');
     listening = false;
-    setStatus(false, 'mic blocked');
+    setStatus(false, 'blocked', true);
+    return;
   }
+
+  await enableKeepAwake();
+
+  setTimeout(() => {
+    if (!listening) return;
+    safeStart();
+    setStatus(true);
+    if (!timerInterval) startTimer();
+  }, 200);
 };
 
 stopBtn.onclick = () => {
-  log('⏹ Stop tapped — will not restart.');
+  log('⏹ Stop tapped', 'info');
   intentionalStop = true;
   listening = false;
   if (rec) { try { rec.stop(); } catch(e){} }
+  commitSession();
+  stopTimer();
+  disableKeepAwake();
   setStatus(false, 'idle');
-  interimText = '';
   renderLive();
 };
 
 submitBtn.onclick = () => {
-  const combined = (finalText + (interimText ? ' ' + interimText : '')).trim();
-  if (!combined) {
+  const text = plainText();
+  if (!text) {
     savedEl.textContent = '⚠️ Nothing to submit — speak first.';
     savedEl.classList.add('placeholder');
     return;
   }
-  savedEl.textContent = combined;
+  savedEl.textContent = text;
   savedEl.classList.remove('placeholder');
-  log('📥 Submitted ' + combined.length + ' chars');
+  const wc = wordCount(text);
+  savedMeta.textContent = wc + ' words · ' + text.length + ' chars';
+  log('📥 Submitted (' + wc + ' words)', 'info');
+};
+
+copyBtn.onclick = async () => {
+  const text = plainText();
+  if (!text) { log('Nothing to copy', 'warn'); return; }
+  try {
+    await navigator.clipboard.writeText(text);
+    log('📋 Copied', 'info');
+    copyBtn.textContent = '✅ Copied';
+    setTimeout(() => copyBtn.textContent = '📋 Copy', 1500);
+  } catch (e) { log('❌ Clipboard failed: ' + e.message, 'err'); }
 };
 
 clearBtn.onclick = () => {
   intentionalStop = true;
   listening = false;
   if (rec) { try { rec.stop(); } catch(e){} }
-  finalText = ''; interimText = '';
+  segments = [];
+  sessionFinalText = '';
+  currentInterim = '';
+  restartCount = 0;
+  updateRestartBadge();
+  resetTimer();
   renderLive();
   savedEl.textContent = 'Submitted text appears here.';
   savedEl.classList.add('placeholder');
+  savedMeta.textContent = '';
+  disableKeepAwake();
   setStatus(false, 'idle');
-  log('🧹 Cleared');
+  log('🧹 Cleared', 'info');
 };
 
+/* ---------- Page lifecycle ---------- */
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && listening) log('⚠️ page hidden — speech may pause', 'warn');
+  else if (!document.hidden && listening && !intentionalStop) {
+    log('👁 visible again');
+    try { rec.start(); } catch(e){}
+  }
+});
+
+window.addEventListener('beforeunload', () => {
+  if (rec && listening) { try { rec.stop(); } catch(e){} }
+  disableKeepAwake();
+});
+
+/* ---------- Init ---------- */
 setStatus(false, 'idle');
 renderLive();
+log('Ready. Pick language, tap Start.', 'info');
 </script>
 </body>
 </html>
