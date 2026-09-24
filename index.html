@@ -1,409 +1,79 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#1b4f72">
-  <title>Speech to Text — Mobile Adaptive</title>
-  <style>
-    * {
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1b4f72">
+<title>Speech to Text — Fixed</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    background: #eef3f9; min-height: 100vh;
+    overscroll-behavior: none;
+  }
+  body { padding: 12px; padding-bottom: 24px; }
 
-    html, body {
-      margin: 0;
-      padding: 0;
-      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans Bengali', 'Noto Sans Devanagari', sans-serif;
-      background: #eef3f9;
-      min-height: 100vh;
-      overscroll-behavior: none;
-    }
+  h1 { font-size: 1.2rem; color: #0b2a3e; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  h1 .pill { font-size: 0.6rem; background: #1b4f72; color: #fff; padding: 3px 8px; border-radius: 20px; font-weight: 600; }
+  h1 .device { font-size: 0.55rem; background: #dbeafe; color: #1e40af; padding: 3px 8px; border-radius: 20px; font-weight: 700; text-transform: uppercase; }
+  h1 .device.warn { background: #fef3c7; color: #92400e; }
+  h1 .device.err { background: #fee2e2; color: #991b1b; }
 
-    body {
-      padding: 12px;
-      padding-bottom: 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
+  .sub { color: #4a6a85; font-size: 0.8rem; margin-bottom: 10px; line-height: 1.4; }
 
-    h1 {
-      font-size: 1.25rem;
-      color: #0b2a3e;
-      margin: 0;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
+  .advisory {
+    background: #fff8e6; border: 1.5px solid #f0d48a; color: #7a5500;
+    border-radius: 12px; padding: 10px 12px; margin-bottom: 10px;
+    font-size: 0.78rem; line-height: 1.45; display: none;
+  }
+  .advisory.show { display: block; }
+  .advisory.err { background: #ffefef; border-color: #e9a8a8; color: #8b2020; }
+  .advisory.info { background: #eaf4fb; border-color: #9fc7e0; color: #0f4a6e; }
+  .advisory strong { display: block; margin-bottom: 2px; font-size: 0.85rem; }
 
-    h1 .pill {
-      font-size: 0.6rem;
-      background: #1b4f72;
-      color: #fff;
-      padding: 3px 8px;
-      border-radius: 20px;
-      font-weight: 600;
-      letter-spacing: 0.4px;
-    }
+  .lang-bar { display: flex; gap: 6px; margin-bottom: 10px; background: #fff; padding: 6px; border-radius: 14px; border: 2px solid #d0dfee; }
+  .lang-btn { flex: 1; padding: 8px 4px; font-size: 13px; font-weight: 600; border: none; border-radius: 10px; cursor: pointer; background: #eef3f9; color: #3a5b78; touch-action: manipulation; display: flex; flex-direction: column; align-items: center; gap: 2px; line-height: 1.2; }
+  .lang-btn .native { font-size: 14px; }
+  .lang-btn .code { font-size: 0.6rem; opacity: 0.7; }
+  .lang-btn.active { background: #1b4f72; color: #fff; }
 
-    h1 .device {
-      font-size: 0.55rem;
-      background: #dbeafe;
-      color: #1e40af;
-      padding: 3px 8px;
-      border-radius: 20px;
-      font-weight: 700;
-      letter-spacing: 0.3px;
-      text-transform: uppercase;
-    }
+  .box { background: #fff; border-radius: 16px; padding: 12px 14px; margin-bottom: 10px; border: 2px solid #d0dfee; }
+  .box h3 { margin: 0 0 6px; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.6px; color: #3a5b78; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+  .box h3 .meta { font-size: 0.6rem; color: #7d95aa; font-weight: 500; text-transform: none; }
+  #live, #saved { font-size: 1.05rem; line-height: 1.6; color: #102b3f; min-height: 2.2rem; max-height: 28vh; overflow-y: auto; white-space: pre-wrap; word-break: break-word; }
+  #live.interim { color: #1e5e7e; }
+  #live.interim::after { content: '▍'; color: #1b4f72; animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .placeholder { color: #8aa3b8; font-style: italic; }
 
-    h1 .device.warn {
-      background: #fef3c7;
-      color: #92400e;
-    }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  button { flex: 1 1 auto; padding: 14px 12px; font-size: 15px; font-weight: 600; border: none; border-radius: 12px; cursor: pointer; color: #fff; background: #1b4f72; touch-action: manipulation; min-height: 52px; }
+  button:active { transform: scale(0.97); }
+  button:disabled { opacity: 0.4; }
+  button.alt { background: #eaf1f9; color: #10344b; }
+  button.red { background: #b13e3e; }
+  button.green { background: #1f8a4c; }
 
-    h1 .device.err {
-      background: #fee2e2;
-      color: #991b1b;
-    }
+  #status { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: #225577; font-weight: 500; padding: 8px 12px; background: #fff; border-radius: 12px; border: 1px solid #d8e5f0; flex-wrap: wrap; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #9aaec2; flex-shrink: 0; }
+  .dot.on { background: #2ecc71; animation: pulse 1.3s infinite; }
+  .dot.warn { background: #e6a817; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-    .sub {
-      color: #4a6a85;
-      font-size: 0.8rem;
-      margin: 0;
-      line-height: 1.4;
-    }
-
-    .advisory {
-      background: #fff8e6;
-      border: 1.5px solid #f0d48a;
-      color: #7a5500;
-      border-radius: 12px;
-      padding: 10px 12px;
-      font-size: 0.78rem;
-      line-height: 1.45;
-      display: none;
-    }
-
-    .advisory.show {
-      display: block;
-    }
-
-    .advisory.err {
-      background: #ffefef;
-      border-color: #e9a8a8;
-      color: #8b2020;
-    }
-
-    .advisory.info {
-      background: #eaf4fb;
-      border-color: #9fc7e0;
-      color: #0f4a6e;
-    }
-
-    .advisory strong {
-      display: block;
-      margin-bottom: 2px;
-      font-size: 0.82rem;
-    }
-
-    .lang-bar {
-      display: flex;
-      gap: 6px;
-      background: #fff;
-      padding: 6px;
-      border-radius: 14px;
-      border: 2px solid #d0dfee;
-      box-shadow: 0 4px 14px rgba(20, 50, 80, 0.05);
-    }
-
-    .lang-btn {
-      flex: 1;
-      padding: 8px 4px;
-      font-size: 13px;
-      font-weight: 600;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      background: #eef3f9;
-      color: #3a5b78;
-      transition: 0.15s;
-      touch-action: manipulation;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 2px;
-      line-height: 1.2;
-    }
-
-    .lang-btn .native {
-      font-size: 14px;
-    }
-
-    .lang-btn .code {
-      font-size: 0.6rem;
-      opacity: 0.7;
-      font-weight: 500;
-      letter-spacing: 0.4px;
-      text-transform: uppercase;
-    }
-
-    .lang-btn.active {
-      background: #1b4f72;
-      color: #fff;
-      box-shadow: 0 4px 12px rgba(27, 79, 114, 0.35);
-    }
-
-    .lang-btn.active .code {
-      opacity: 0.85;
-    }
-
-    .lang-btn:active {
-      transform: scale(0.97);
-    }
-
-    .box {
-      background: #fff;
-      border-radius: 16px;
-      padding: 12px 14px;
-      border: 2px solid #d0dfee;
-      box-shadow: 0 4px 14px rgba(20, 50, 80, 0.05);
-    }
-
-    .box h3 {
-      margin: 0 0 6px;
-      font-size: 0.65rem;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      color: #3a5b78;
-      font-weight: 700;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .box h3 .meta {
-      font-size: 0.6rem;
-      color: #7d95aa;
-      font-weight: 500;
-      text-transform: none;
-      letter-spacing: 0;
-    }
-
-    #live, #saved {
-      font-size: 1.05rem;
-      line-height: 1.6;
-      color: #102b3f;
-      min-height: 2.2rem;
-      max-height: 28vh;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      word-break: break-word;
-      -webkit-user-select: text;
-      user-select: text;
-    }
-
-    #live.interim {
-      color: #1e5e7e;
-    }
-
-    #live.interim::after {
-      content: '▍';
-      color: #1b4f72;
-      animation: blink 1s steps(2) infinite;
-      margin-left: 1px;
-    }
-
-    @keyframes blink {
-      50% { opacity: 0; }
-    }
-
-    .placeholder {
-      color: #8aa3b8;
-      font-style: italic;
-    }
-
-    .lang-tag {
-      display: inline-block;
-      font-size: 0.55rem;
-      font-weight: 700;
-      padding: 1px 5px;
-      border-radius: 8px;
-      margin-right: 5px;
-      vertical-align: middle;
-      letter-spacing: 0.3px;
-      text-transform: uppercase;
-      opacity: 0.85;
-    }
-
-    .lang-tag.en {
-      background: #dbeafe;
-      color: #1e40af;
-    }
-
-    .lang-tag.bn {
-      background: #fce7f3;
-      color: #9d174d;
-    }
-
-    .lang-tag.hi {
-      background: #fef3c7;
-      color: #92400e;
-    }
-
-    .btns {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    button {
-      flex: 1 1 auto;
-      padding: 14px 12px;
-      font-size: 15px;
-      font-weight: 600;
-      border: none;
-      border-radius: 14px;
-      cursor: pointer;
-      color: #fff;
-      background: #1b4f72;
-      transition: transform 0.1s, opacity 0.15s;
-      touch-action: manipulation;
-      min-height: 52px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-    }
-
-    button:active {
-      transform: scale(0.97);
-    }
-
-    button:disabled {
-      opacity: 0.4;
-    }
-
-    button.alt {
-      background: #eaf1f9;
-      color: #10344b;
-    }
-
-    button.red {
-      background: #b13e3e;
-    }
-
-    button.green {
-      background: #1f8a4c;
-    }
-
-    #status {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.8rem;
-      color: #225577;
-      font-weight: 500;
-      padding: 8px 12px;
-      background: #fff;
-      border-radius: 14px;
-      border: 1px solid #d8e5f0;
-      flex-wrap: wrap;
-    }
-
-    .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #9aaec2;
-      flex-shrink: 0;
-      transition: 0.2s;
-    }
-
-    .dot.on {
-      background: #2ecc71;
-      box-shadow: 0 0 0 4px rgba(46, 204, 113, 0.25);
-      animation: pulse 1.3s infinite;
-    }
-
-    .dot.warn {
-      background: #e6a817;
-      box-shadow: 0 0 0 4px rgba(230, 168, 23, 0.25);
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
-
-    .session-badge {
-      font-size: 0.65rem;
-      padding: 3px 9px;
-      border-radius: 20px;
-      background: #dbeafe;
-      color: #1e40af;
-      font-weight: 700;
-      letter-spacing: 0.3px;
-    }
-
-    .session-badge.restart {
-      background: #fef3c7;
-      color: #92400e;
-    }
-
-    #log {
-      background: #0d1b26;
-      color: #6ee7a8;
-      font-family: ui-monospace, monospace;
-      font-size: 10px;
-      padding: 10px 12px;
-      border-radius: 12px;
-      white-space: pre-wrap;
-      max-height: 160px;
-      overflow-y: auto;
-      margin-top: 8px;
-      line-height: 1.5;
-    }
-
-    #log .err { color: #ff8a8a; }
-    #log .warn { color: #ffd479; }
-    #log .info { color: #6ecfff; }
-
-    details summary {
-      cursor: pointer;
-      color: #4a6a85;
-      font-size: 0.78rem;
-      padding: 6px 0;
-      user-select: none;
-    }
-
-    /* Mobile-specific refinements */
-    @media (max-width: 480px) {
-      body { padding: 10px; gap: 8px; }
-      h1 { font-size: 1.1rem; }
-      .lang-btn { padding: 6px 2px; font-size: 12px; }
-      .lang-btn .native { font-size: 13px; }
-      #live, #saved { font-size: 1rem; max-height: 24vh; }
-      button { padding: 12px 8px; font-size: 14px; min-height: 48px; }
-      .box { padding: 10px 12px; }
-    }
-
-    /* Larger tap targets for iOS */
-    @supports (-webkit-touch-callout: none) {
-      button { min-height: 54px; }
-    }
-  </style>
+  #log { background: #0d1b26; color: #6ee7a8; font-family: ui-monospace, monospace; font-size: 10px; padding: 10px; border-radius: 12px; white-space: pre-wrap; max-height: 150px; overflow-y: auto; margin-top: 8px; line-height: 1.5; }
+  details summary { cursor: pointer; color: #4a6a85; font-size: 0.78rem; padding: 6px 0; }
+</style>
 </head>
 <body>
+
   <h1>
     🎤 Speech to Text
-    <span class="pill">MOBILE</span>
+    <span class="pill">FIXED</span>
     <span class="device" id="deviceBadge">detecting…</span>
   </h1>
-  <div class="sub" id="deviceHint">Optimizing for your device…</div>
+  <div class="sub" id="deviceHint">Checking device…</div>
 
   <div class="advisory" id="advisory"></div>
 
@@ -442,7 +112,6 @@
   <div id="status">
     <span class="dot" id="dot"></span>
     <span id="statusTxt">idle</span>
-    <span id="sessionBadge" class="session-badge" style="margin-left:auto;display:none;">1 session</span>
   </div>
 
   <details>
@@ -450,724 +119,499 @@
     <div id="log">Booting…</div>
   </details>
 
-  <script>
-    /* =====================================================================
-       Speech-to-Text — Mobile Adaptive
-       Auto-detects device & browser, tunes behavior for maximum accuracy
-       on mobile phones while maintaining desktop-level performance.
-       ===================================================================== */
+<script>
+/* =====================================================================
+   Speech-to-Text — FIXED MOBILE VERSION
+   Complete rewrite with bulletproof restart + dedup logic.
+   ===================================================================== */
 
-    const $ = id => document.getElementById(id);
-    const logEl = $('log'), liveEl = $('live'), savedEl = $('saved');
-    const liveMeta = $('liveMeta'), savedMeta = $('savedMeta');
-    const startBtn = $('startBtn'), stopBtn = $('stopBtn');
-    const submitBtn = $('submitBtn'), copyBtn = $('copyBtn'), clearBtn = $('clearBtn');
-    const dot = $('dot'), statusTxt = $('statusTxt');
-    const sessionBadge = $('sessionBadge');
-    const langBar = $('langBar');
-    const deviceBadge = $('deviceBadge');
-    const deviceHint = $('deviceHint');
-    const advisory = $('advisory');
+const $ = id => document.getElementById(id);
+const logEl = $('log'), liveEl = $('live'), savedEl = $('saved');
+const liveMeta = $('liveMeta'), savedMeta = $('savedMeta');
+const startBtn = $('startBtn'), stopBtn = $('stopBtn');
+const submitBtn = $('submitBtn'), copyBtn = $('copyBtn'), clearBtn = $('clearBtn');
+const dot = $('dot'), statusTxt = $('statusTxt');
+const langBar = $('langBar');
+const deviceBadge = $('deviceBadge');
+const deviceHint = $('deviceHint');
+const advisory = $('advisory');
 
-    function log(msg, cls) {
-      const color = cls === 'err' ? '#ff8a8a' : cls === 'warn' ? '#ffd479' : cls === 'info' ? '#6ecfff' : '#6ee7a8';
-      const time = new Date().toTimeString().slice(0, 8);
-      logEl.innerHTML += `<div style="color:${color}">[${time}] ${msg}</div>`;
-      logEl.scrollTop = logEl.scrollHeight;
+function log(msg, cls) {
+  const color = cls === 'err' ? '#ff8a8a' : cls === 'warn' ? '#ffd479' : cls === 'info' ? '#6ecfff' : '#6ee7a8';
+  const time = new Date().toTimeString().slice(0, 8);
+  logEl.innerHTML += `<div style="color:${color}">[${time}] ${msg}</div>`;
+  logEl.scrollTop = logEl.scrollHeight;
+  console.log('[STT]', msg);
+}
+
+/* ============ SIMPLE DEVICE DETECT ============ */
+const ua = navigator.userAgent;
+const isIOS = /iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+const isAndroid = /android/i.test(ua);
+const isInApp = /fban|fbav|fb_iab|instagram|whatsapp|line\/|twitter|micromessenger|gsa\/|snapchat/i.test(ua) ||
+                (isIOS && !/safari/i.test(ua) && !/crios|fxios/i.test(ua));
+const isFirefox = /firefox|fxios/i.test(ua) && !/fxios/i.test(ua);
+const hasSpeech = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+const isSecure = window.isSecureContext;
+
+let deviceLabel = 'Mobile';
+let deviceWarn = false;
+if (!isSecure) { deviceLabel = 'insecure'; deviceWarn = true; }
+else if (isInApp) { deviceLabel = 'in-app browser'; deviceWarn = true; }
+else if (isFirefox) { deviceLabel = 'Firefox'; deviceWarn = true; }
+else if (isIOS) { deviceLabel = 'iOS'; }
+else if (isAndroid) { deviceLabel = 'Android'; }
+else { deviceLabel = 'Desktop'; }
+
+deviceBadge.textContent = deviceLabel;
+deviceBadge.className = 'device' + (deviceWarn ? ' warn' : '');
+
+// Advisory
+if (!isSecure) {
+  advisory.className = 'advisory err show';
+  advisory.innerHTML = '<strong>⚠️ Not HTTPS</strong>Speech recognition requires a secure connection. Open via <code>https://</code> or <code>localhost</code>.';
+} else if (isInApp) {
+  advisory.className = 'advisory err show';
+  advisory.innerHTML = '<strong>⚠️ In-app browser</strong>You opened this from Instagram, Facebook, WhatsApp, etc. Speech recognition does NOT work there. Tap ••• → <b>Open in Chrome</b> or <b>Open in Safari</b>.';
+} else if (isFirefox) {
+  advisory.className = 'advisory err show';
+  advisory.innerHTML = '<strong>⚠️ Firefox not supported</strong>Please use Chrome, Edge, or Safari for speech recognition.';
+} else if (isAndroid) {
+  advisory.className = 'advisory info show';
+  advisory.innerHTML = '<strong>ℹ️ Android tip</strong>Speak without long pauses. The mic restarts after ~5s of silence — your text is saved automatically.';
+} else if (isIOS) {
+  advisory.className = 'advisory info show';
+  advisory.innerHTML = '<strong>ℹ️ iOS tip</strong>Works best in Safari. Chrome/Firefox on iOS use Safari engine but may be less accurate.';
+}
+
+if (!hasSpeech) {
+  advisory.className = 'advisory err show';
+  advisory.innerHTML = '<strong>⚠️ Speech API not available</strong>Your browser doesn\'t support speech recognition. Try Chrome, Edge, or Safari.';
+}
+
+deviceHint.innerHTML = isAndroid
+  ? 'Speak continuously. Auto-restarts after silence.'
+  : isIOS
+    ? 'Speak naturally. Long sessions supported.'
+    : 'Speak naturally.';
+
+/* ============ CONFIG ============ */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null;
+
+let listening = false;
+let intentionalStop = false;
+let isStarting = false;
+let restartTimer = null;
+let restartCount = 0;
+let consecutiveFails = 0;
+
+let currentLang = 'en-IN';
+let currentCode = 'en';
+
+let finalText = '';        // committed final text
+let interimText = '';      // current interim
+let sessionStartTime = null;
+let totalSeconds = 0;
+let timerInterval = null;
+
+let wakeLock = null;
+
+/* ============ TEXT HANDLING ============ */
+function normalize(s) {
+  return s.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ').trim();
+}
+
+function words(s) {
+  return normalize(s).split(' ').filter(Boolean);
+}
+
+// Remove overlap between end of existing and start of new
+function mergeText(existing, incoming) {
+  if (!incoming) return existing;
+  if (!existing) return incoming.trim();
+
+  const a = words(existing);
+  const b = words(incoming);
+  if (!a.length) return incoming.trim();
+  if (!b.length) return existing;
+
+  // Find largest overlap
+  const maxCheck = Math.min(a.length, b.length, 30);
+  let bestOverlap = 0;
+
+  for (let len = maxCheck; len >= 1; len--) {
+    let match = true;
+    for (let i = 0; i < len; i++) {
+      if (a[a.length - len + i] !== b[i]) { match = false; break; }
+    }
+    if (match) { bestOverlap = len; break; }
+  }
+
+  if (bestOverlap === 0) {
+    return (existing.trim() + ' ' + incoming.trim()).replace(/\s+/g, ' ').trim();
+  }
+
+  const remaining = b.slice(bestOverlap).join(' ');
+  if (!remaining) return existing.trim();
+  return (existing.trim() + ' ' + remaining).replace(/\s+/g, ' ').trim();
+}
+
+/* ============ DISPLAY ============ */
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function getFullText() {
+  let t = finalText;
+  if (interimText) t = (t + ' ' + interimText).trim();
+  return t;
+}
+
+function render() {
+  const full = getFullText();
+  if (!full) {
+    liveEl.textContent = 'Tap "Start" and speak…';
+    liveEl.classList.add('placeholder');
+    liveEl.classList.remove('interim');
+  } else {
+    liveEl.innerHTML = escapeHtml(full) + (interimText ? '<span style="color:#1b4f72">▍</span>' : '');
+    liveEl.classList.remove('placeholder');
+  }
+
+  const wc = full ? full.split(/\s+/).filter(Boolean).length : 0;
+  const secs = totalSeconds + (sessionStartTime ? Math.floor((Date.now() - sessionStartTime) / 1000) : 0);
+  const m = Math.floor(secs / 60), s = secs % 60;
+  liveMeta.textContent = wc + ' words · ' + m + ':' + String(s).padStart(2, '0');
+
+  liveEl.scrollTop = liveEl.scrollHeight;
+}
+
+function setStatus(on, label, warn) {
+  listening = on;
+  dot.classList.toggle('on', on);
+  dot.classList.toggle('warn', !!warn);
+  statusTxt.textContent = label || (on ? 'listening' : 'idle');
+  startBtn.disabled = on;
+  stopBtn.disabled = !on;
+}
+
+/* ============ TIMER ============ */
+function startTimer() {
+  if (timerInterval) return;
+  sessionStartTime = Date.now();
+  timerInterval = setInterval(render, 1000);
+}
+
+function stopTimer() {
+  if (sessionStartTime) {
+    totalSeconds += Math.floor((Date.now() - sessionStartTime) / 1000);
+    sessionStartTime = null;
+  }
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+}
+
+/* ============ KEEP AWAKE ============ */
+async function keepAwake() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      log('🔆 wake lock');
+    }
+  } catch (e) {}
+}
+
+function releaseAwake() {
+  if (wakeLock) { try { wakeLock.release(); } catch (e) {} wakeLock = null; }
+}
+
+/* ============ RECOGNIZER ============ */
+function createRecognizer() {
+  const r = new SR();
+  r.continuous = true;
+  r.interimResults = true;
+  r.lang = currentLang;
+  r.maxAlternatives = 1;
+
+  r.onstart = () => {
+    isStarting = false;
+    consecutiveFails = 0;
+    log('✅ Session started (lang=' + currentLang + ')', 'info');
+    setStatus(true);
+    if (!timerInterval) startTimer();
+    render();
+  };
+
+  r.onresult = (e) => {
+    let newFinal = '';
+    let newInterim = '';
+
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const res = e.results[i];
+      const txt = res[0].transcript;
+      if (res.isFinal) newFinal += txt;
+      else newInterim += txt;
     }
 
-    /* =====================================================================
-       DEVICE DETECTION — optimized for mobile accuracy
-       ===================================================================== */
-    const DEVICE = detectDevice();
-
-    function detectDevice() {
-      const ua = navigator.userAgent;
-      const uaLC = ua.toLowerCase();
-      const maxTouch = navigator.maxTouchPoints || 0;
-
-      // In-app browsers (webviews)
-      const isInApp =
-        /fban|fbav|fb_iab|instagram|whatsapp|line\/|twitter|micromessenger|gsa\/|snapchat/i.test(ua) ||
-        (/(iphone|ipad|ipod)/i.test(ua) && !/safari/i.test(ua) && !/crios|fxios/i.test(ua));
-
-      // iOS detection (iPadOS 13+ reports as Mac)
-      const isIOS =
-        /iphone|ipad|ipod/i.test(ua) ||
-        (/macintosh/i.test(ua) && maxTouch > 1);
-
-      const isAndroid = /android/i.test(ua);
-
-      // Browser families
-      const isChromeIOS = /crios/i.test(ua);
-      const isFirefoxIOS = /fxios/i.test(ua);
-      const isEdgeIOS = /edgios/i.test(ua);
-
-      const isSafariDesktop = /safari/i.test(ua) && !/chrome|chromium|edg|crios|fxios/i.test(ua);
-      const isChromeDesktop = /chrome/i.test(ua) && !/edg|crios|opr/i.test(ua);
-      const isEdgeDesktop = /edg/i.test(ua) && !/edgios|edge\//i.test(ua);
-
-      const isSafariIOS = isIOS && !isChromeIOS && !isFirefoxIOS && !isEdgeIOS;
-
-      const hasSpeechAPI = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
-      const isSecure = window.isSecureContext;
-
-      let type = 'unknown';
-      let label = 'Unknown';
-      let warn = false;
-
-      if (!isSecure) {
-        type = 'insecure'; label = 'insecure'; warn = true;
-      } else if (isInApp) {
-        type = 'inapp'; label = 'in-app browser'; warn = true;
-      } else if (isFirefoxIOS) {
-        type = 'firefox-ios'; label = 'Firefox iOS'; warn = true;
-      } else if (isSafariIOS) {
-        type = 'ios-safari'; label = 'iOS Safari';
-      } else if (isChromeIOS) {
-        type = 'chrome-ios'; label = 'Chrome iOS'; warn = true;
-      } else if (isEdgeIOS) {
-        type = 'edge-ios'; label = 'Edge iOS'; warn = true;
-      } else if (isAndroid && /chrome/i.test(ua)) {
-        type = 'android-chrome'; label = 'Android Chrome';
-      } else if (isChromeDesktop) {
-        type = 'desktop-chrome'; label = 'Desktop Chrome';
-      } else if (isEdgeDesktop) {
-        type = 'desktop-edge'; label = 'Desktop Edge';
-      } else if (isSafariDesktop) {
-        type = 'desktop-safari'; label = 'Desktop Safari';
-      } else if (isIOS) {
-        type = 'ios-other'; label = 'iOS browser'; warn = true;
-      } else {
-        type = 'other'; label = 'Other';
-      }
-
-      return { type, label, warn, isIOS, isAndroid, hasSpeechAPI, isSecure, isInApp, ua };
+    if (newInterim) {
+      interimText = newInterim.trim();
     }
 
-    /* ---------- Per-device tuning — mobile-first accuracy ---------- */
-    const TUNING = getTuning(DEVICE.type);
-
-    function getTuning(type) {
-      switch (type) {
-        case 'ios-safari':
-          // Safari holds session for 30-60s of silence — great for long dictation
-          return {
-            restartDelay: 500,
-            maxRestartDelay: 2000,
-            expectLongSessions: true,
-            sessionHint: 'Safari keeps one session alive for a long time. Speak naturally — accuracy is high.'
-          };
-        case 'desktop-chrome':
-        case 'desktop-edge':
-          return {
-            restartDelay: 300,
-            maxRestartDelay: 1500,
-            expectLongSessions: true,
-            sessionHint: 'True single session — speak as long as you like, pause freely.'
-          };
-        case 'desktop-safari':
-          return {
-            restartDelay: 300,
-            maxRestartDelay: 1500,
-            expectLongSessions: true,
-            sessionHint: 'Desktop Safari supports long sessions. Speak freely.'
-          };
-        case 'android-chrome':
-          // Chrome Android cuts at ~5s silence — we restart, dedup handles it
-          return {
-            restartDelay: 400,
-            maxRestartDelay: 2200,
-            expectLongSessions: false,
-            sessionHint: 'Speak continuously — pause briefly between phrases. Text is preserved across restarts. Accuracy matches desktop.'
-          };
-        case 'chrome-ios':
-        case 'ios-other':
-        case 'edge-ios':
-          return {
-            restartDelay: 500,
-            maxRestartDelay: 2000,
-            expectLongSessions: true,
-            sessionHint: 'iOS engine — long sessions work well. Speak naturally.'
-          };
-        case 'firefox':
-        case 'firefox-ios':
-          return {
-            restartDelay: 800,
-            maxRestartDelay: 3000,
-            expectLongSessions: false,
-            sessionHint: 'Firefox has limited Web Speech support.'
-          };
-        default:
-          return {
-            restartDelay: 500,
-            maxRestartDelay: 2500,
-            expectLongSessions: false,
-            sessionHint: 'Speak clearly. Avoid long pauses for best accuracy.'
-          };
-      }
+    if (newFinal.trim()) {
+      const clean = newFinal.trim();
+      const before = finalText;
+      finalText = mergeText(finalText, clean);
+      interimText = '';
+      log('📝 +' + (finalText.length - before.length) + ' chars', 'info');
     }
 
-    /* ---------- Apply device UI ---------- */
-    function applyDeviceUI() {
-      deviceBadge.textContent = DEVICE.label;
-      deviceBadge.className = 'device' + (DEVICE.warn ? ' warn' : '');
+    render();
+  };
 
-      deviceHint.innerHTML = TUNING.sessionHint;
+  r.onerror = (e) => {
+    log('❌ error: ' + e.error, 'err');
 
-      // Advisory banners
-      if (!DEVICE.isSecure) {
-        advisory.className = 'advisory err show';
-        advisory.innerHTML = '<strong>⚠️ Not a secure connection</strong>' +
-          'Speech recognition requires HTTPS. Open this page via <code>https://</code> or <code>localhost</code>.';
-      } else if (DEVICE.isInApp) {
-        advisory.className = 'advisory err show';
-        advisory.innerHTML = '<strong>⚠️ In-app browser detected</strong>' +
-          'You opened this from Instagram, Facebook, WhatsApp, or similar. Speech recognition doesn\'t work there. ' +
-          'Tap the ••• menu → <b>"Open in Chrome"</b> or <b>"Open in Safari"</b>.';
-      } else if (DEVICE.type === 'firefox' || DEVICE.type === 'firefox-ios') {
-        advisory.className = 'advisory err show';
-        advisory.innerHTML = '<strong>⚠️ Firefox doesn\'t support Web Speech API</strong>' +
-          'Please use Chrome, Edge, or Safari for speech recognition.';
-      } else if (DEVICE.type === 'chrome-ios') {
-        advisory.className = 'advisory info show';
-        advisory.innerHTML = '<strong>ℹ️ Chrome on iOS</strong>' +
-          'iOS Chrome uses Safari\'s engine — speech works but is less accurate than native Safari. For best results, open this page in <b>Safari</b>.';
-      } else if (DEVICE.isAndroid) {
-        advisory.className = 'advisory info show';
-        advisory.innerHTML = '<strong>ℹ️ Android Chrome tip</strong>' +
-          'Keep speaking without long pauses. The browser restarts after ~5s of silence — your text is preserved automatically.';
-      }
-
-      // Apply the tuning
-      CONFIG.restartDelay = TUNING.restartDelay;
-      CONFIG.maxRestartDelay = TUNING.maxRestartDelay;
-      currentDelay = CONFIG.restartDelay;
-
-      log('Device: ' + DEVICE.label + ' (' + DEVICE.type + ')', 'info');
-      log('Speech API: ' + (DEVICE.hasSpeechAPI ? 'available' : 'NOT available'), DEVICE.hasSpeechAPI ? '' : 'err');
-      log('Secure: ' + DEVICE.isSecure, DEVICE.isSecure ? '' : 'err');
-      log('Tuning: restartDelay=' + CONFIG.restartDelay + 'ms', 'info');
-    }
-
-    /* =====================================================================
-       CONFIG + STATE
-       ===================================================================== */
-    const CONFIG = {
-      defaultLang: 'en-IN',
-      restartDelay: 500,
-      maxRestartDelay: 2500,
-      maxRestartsInARow: 30,
-      keepAlive: true
-    };
-
-    let currentLang = CONFIG.defaultLang;
-    let currentCode = 'en';
-
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-    let rec = null;
-    let listening = false;
-    let intentionalStop = false;
-    let restarting = false;
-    let restartCount = 0;
-    let sessionCount = 0;
-    let consecutiveRestarts = 0;
-    let currentDelay = CONFIG.restartDelay;
-
-    let segments = [];
-    let sessionFinalText = '';
-    let currentInterim = '';
-    let sessionLangCode = currentCode;
-    let sessionLangFull = currentLang;
-
-    let recentWords = [];
-    const RECENT_MEMORY = 100; // Increased for mobile accuracy
-
-    let sessionStartTime = null;
-    let totalSeconds = 0;
-    let timerInterval = null;
-
-    let wakeLock = null;
-    let silentAudio = null;
-
-    /* ---------- Keep-awake — critical for mobile ---------- */
-    async function enableKeepAwake() {
-      try {
-        if ('wakeLock' in navigator) {
-          wakeLock = await navigator.wakeLock.request('screen');
-          log('🔆 wake lock on');
-          wakeLock.addEventListener('release', () => log('wake lock off', 'warn'));
-          return;
-        }
-      } catch (e) {}
-      if (CONFIG.keepAlive && !silentAudio) {
-        try {
-          const wav = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
-          silentAudio = new Audio(wav);
-          silentAudio.loop = true;
-          silentAudio.volume = 0.001;
-          await silentAudio.play();
-          log('🔇 silent audio keep-alive');
-        } catch (e) {}
-      }
-    }
-
-    function disableKeepAwake() {
-      if (wakeLock) { try { wakeLock.release(); } catch (e) {} wakeLock = null; }
-      if (silentAudio) { try { silentAudio.pause(); silentAudio = null; } catch (e) {} }
-    }
-
-    /* ---------- Dedup — enhanced for mobile restarts ---------- */
-    function normalizeWords(s) {
-      return s.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, '').split(/\s+/).filter(Boolean);
-    }
-
-    function overlapWords(a, b) {
-      const A = normalizeWords(a), B = normalizeWords(b);
-      if (!A.length || !B.length) return 0;
-      const max = Math.min(A.length, B.length, 50); // Increased for better matching
-      for (let len = max; len > 0; len--) {
-        let match = true;
-        for (let i = 0; i < len; i++) {
-          if (A[A.length - len + i] !== B[i]) { match = false; break; }
-        }
-        if (match) return len;
-      }
-      return 0;
-    }
-
-    function smartAppend(A, B) {
-      if (!B || !B.trim()) return A || '';
-      if (!A || !A.trim()) return B.trim();
-      const overlap = overlapWords(A, B);
-      const Bwords = B.trim().split(/\s+/).filter(Boolean);
-      if (overlap === 0) return (A.trim() + ' ' + B.trim()).replace(/\s+/g, ' ').trim();
-      const newWords = Bwords.slice(overlap).join(' ');
-      if (!newWords) return A.trim();
-      return (A.trim() + ' ' + newWords).replace(/\s+/g, ' ').trim();
-    }
-
-    function skipRecentReplay(text) {
-      const incoming = normalizeWords(text);
-      if (!incoming.length) return 0;
-      const recent = recentWords.map(r => r.w);
-      const max = Math.min(incoming.length, recent.length, 50);
-      for (let k = max; k >= 2; k--) {
-        let match = true;
-        for (let i = 0; i < k; i++) {
-          if (incoming[i] !== recent[recent.length - k + i]) { match = false; break; }
-        }
-        if (match) return k;
-      }
-      return 0;
-    }
-
-    function isFullReplay(text) {
-      const incoming = normalizeWords(text);
-      if (incoming.length < 2) return false;
-      const recent = recentWords.map(r => r.w);
-      const n = incoming.length, m = recent.length;
-      if (n > m) return false;
-      for (let start = 0; start <= m - n; start++) {
-        let ok = true;
-        for (let i = 0; i < n; i++) {
-          if (recent[start + i] !== incoming[i]) { ok = false; break; }
-        }
-        if (ok) return true;
-      }
-      return false;
-    }
-
-    function isMostlyReplay(text) {
-      const incoming = normalizeWords(text);
-      if (incoming.length < 2) return false;
-      const recentSet = new Set(recentWords.map(r => r.w));
-      let hits = 0;
-      for (const w of incoming) if (recentSet.has(w)) hits++;
-      return (hits / incoming.length) >= 0.75; // Slightly stricter for mobile
-    }
-
-    function rememberWords(text, langCode) {
-      for (const w of normalizeWords(text)) recentWords.push({ w, lang: langCode });
-      if (recentWords.length > RECENT_MEMORY) recentWords = recentWords.slice(-RECENT_MEMORY);
-    }
-
-    function resetMemory() { recentWords = []; }
-
-    /* ---------- Display ---------- */
-    function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    }
-
-    function buildSegmentsText(includeInterim = true) {
-      let out = '';
-      for (const seg of segments) {
-        out += `<span class="lang-tag ${seg.lang}">${seg.lang}</span>` + escapeHtml(seg.text) + ' ';
-      }
-      if (sessionFinalText.trim()) {
-        out += `<span class="lang-tag ${sessionLangCode}">${sessionLangCode}</span>` + escapeHtml(sessionFinalText.trim()) + ' ';
-      }
-      if (includeInterim && currentInterim.trim()) {
-        out += `<span class="lang-tag ${sessionLangCode}">${sessionLangCode}</span><em>${escapeHtml(currentInterim.trim())}</em>`;
-      }
-      return out.trim();
-    }
-
-    function plainText() {
-      let out = '';
-      for (const seg of segments) out += seg.text + ' ';
-      if (sessionFinalText.trim()) out += sessionFinalText.trim() + ' ';
-      if (currentInterim.trim()) out += currentInterim.trim();
-      return out.replace(/\s+/g, ' ').trim();
-    }
-
-    function wordCount(t) { return t.trim() ? t.trim().split(/\s+/).length : 0; }
-
-    function formatTime(sec) {
-      const m = Math.floor(sec / 60), s = sec % 60;
-      return m + ':' + String(s).padStart(2, '0');
-    }
-
-    function renderLive() {
-      const html = buildSegmentsText(true);
-      if (!html) {
-        liveEl.textContent = 'Tap "Start" and speak…';
-        liveEl.classList.add('placeholder');
-        liveEl.classList.remove('interim');
-      } else {
-        liveEl.innerHTML = html;
-        liveEl.classList.remove('placeholder');
-        liveEl.classList.toggle('interim', !!currentInterim.trim());
-      }
-      const wc = wordCount(plainText());
-      const secs = totalSeconds + (sessionStartTime ? Math.floor((Date.now() - sessionStartTime) / 1000) : 0);
-      liveMeta.textContent = wc + ' words · ' + formatTime(secs);
-
-      if (listening) {
-        sessionBadge.style.display = 'inline-block';
-        if (sessionCount <= 1) {
-          sessionBadge.textContent = '1 session';
-          sessionBadge.className = 'session-badge';
-        } else {
-          sessionBadge.textContent = sessionCount + ' sessions';
-          sessionBadge.className = 'session-badge restart';
-        }
-      } else {
-        sessionBadge.style.display = 'none';
-      }
-      liveEl.scrollTop = liveEl.scrollHeight;
-    }
-
-    function setStatus(on, label, warn) {
-      listening = on;
-      dot.classList.toggle('on', on);
-      dot.classList.toggle('warn', !!warn);
-      statusTxt.textContent = label || (on ? 'listening · ' + currentCode : 'idle');
-      startBtn.disabled = on;
-      stopBtn.disabled = !on;
-    }
-
-    function startTimer() {
-      if (timerInterval) return;
-      sessionStartTime = Date.now();
-      timerInterval = setInterval(() => renderLive(), 1000);
-    }
-
-    function stopTimer() {
-      if (sessionStartTime) {
-        totalSeconds += Math.floor((Date.now() - sessionStartTime) / 1000);
-        sessionStartTime = null;
-      }
-      if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-    }
-
-    function resetTimer() { stopTimer(); totalSeconds = 0; }
-
-    function commitSession() {
-      if (sessionFinalText.trim()) {
-        const last = segments[segments.length - 1];
-        if (last && last.lang === sessionLangCode) {
-          last.text = smartAppend(last.text, sessionFinalText.trim());
-        } else {
-          segments.push({
-            lang: sessionLangCode,
-            langFull: sessionLangFull,
-            text: sessionFinalText.trim()
-          });
-        }
-        rememberWords(sessionFinalText.trim(), sessionLangCode);
-      }
-      sessionFinalText = '';
-      currentInterim = '';
-    }
-
-    /* ---------- Recognizer ---------- */
-    function buildRecognizer() {
-      const r = new SR();
-      r.continuous = true;
-      r.interimResults = true;
-      r.lang = currentLang;
-      r.maxAlternatives = 1;
-
-      r.onstart = () => {
-        restarting = false;
-        consecutiveRestarts = 0;
-        currentDelay = CONFIG.restartDelay;
-        sessionCount++;
-        log('✅ SESSION #' + sessionCount + ' (lang=' + currentLang + ')', 'info');
-        if (listening) setStatus(true);
-        if (!timerInterval) startTimer();
-        renderLive();
-      };
-
-      r.onspeechstart = () => log('🗣 speech');
-      r.onspeechend = () => log('🤐 silence');
-
-      r.onresult = (e) => {
-        let newSessionFinal = '';
-        let newInterim = '';
-        for (let i = 0; i < e.results.length; i++) {
-          const res = e.results[i];
-          const t = res[0].transcript;
-          if (res.isFinal) newSessionFinal += t;
-          else newInterim += t;
-        }
-        currentInterim = newInterim.trim();
-
-        if (newSessionFinal.trim()) {
-          const cleaned = newSessionFinal.trim();
-
-          if (isFullReplay(cleaned)) {
-            log('⏭ skip full replay', 'warn');
-            renderLive();
-            return;
-          }
-          if (isMostlyReplay(cleaned)) {
-            log('⏭ skip mostly-replay', 'warn');
-            renderLive();
-            return;
-          }
-          const skip = skipRecentReplay(cleaned);
-          const words = cleaned.split(/\s+/).filter(Boolean);
-          const trimmedNew = words.slice(skip).join(' ');
-
-          if (trimmedNew) {
-            const before = sessionFinalText;
-            sessionFinalText = smartAppend(sessionFinalText, trimmedNew);
-            const added = sessionFinalText.slice(before.length).trim();
-            if (added) rememberWords(added, sessionLangCode);
-          }
-        }
-        renderLive();
-      };
-
-      r.onerror = (e) => {
-        log('❌ error: ' + e.error, 'err');
-        switch (e.error) {
-          case 'not-allowed':
-          case 'service-not-allowed':
-            intentionalStop = true;
-            listening = false;
-            setStatus(false, 'mic blocked', true);
-            advisory.className = 'advisory err show';
-            advisory.innerHTML = '<strong>⚠️ Microphone blocked</strong>' +
-              'Tap the 🔒 icon in the address bar → Permissions → Microphone → Allow, then reload.';
-            break;
-          case 'audio-capture':
-            log('   → no mic', 'err');
-            break;
-          case 'network':
-            log('   → network error', 'warn');
-            break;
-        }
-      };
-
-      r.onend = () => {
-        log('🔚 SESSION #' + sessionCount + ' ended', 'info');
-
-        if (listening && !intentionalStop) {
-          commitSession();
-          renderLive();
-          consecutiveRestarts++;
-          restartCount++;
-
-          if (consecutiveRestarts > CONFIG.maxRestartsInARow) {
-            log('⛔ too many restarts — pausing 5s', 'warn');
-            consecutiveRestarts = 0;
-            setTimeout(() => { if (listening && !intentionalStop) safeStart(); }, 5000);
-            return;
-          }
-          log('↻ forced restart #' + restartCount + ' (' + currentDelay + 'ms)', 'warn');
-          setTimeout(() => { if (listening && !intentionalStop) safeStart(); }, currentDelay);
-          currentDelay = Math.min(currentDelay * 1.4, CONFIG.maxRestartDelay);
-        } else {
-          commitSession();
-          stopTimer();
-          setStatus(false, 'idle');
-          renderLive();
-        }
-      };
-
-      return r;
-    }
-
-    function safeStart() {
-      if (!rec || restarting) return;
-      restarting = true;
-      try { rec.start(); }
-      catch (err) {
-        restarting = false;
-        if (err.name === 'InvalidStateError') {
-          try { rec.stop(); } catch (e) {}
-          setTimeout(() => { if (listening && !intentionalStop) safeStart(); }, 400);
-        } else {
-          setTimeout(() => { if (listening && !intentionalStop) safeStart(); }, 800);
-        }
-      }
-    }
-
-    /* ---------- Language switch ---------- */
-    function setLanguage(langFull, langCode, btn) {
-      if (currentLang === langFull && currentCode === langCode) return;
-      log('🌐 language → ' + langFull, 'info');
-
-      Array.from(langBar.children).forEach(b => b.classList.remove('active'));
-      if (btn) btn.classList.add('active');
-
-      if (listening && rec) {
-        commitSession();
-        currentLang = langFull;
-        currentCode = langCode;
-        sessionLangCode = langCode;
-        sessionLangFull = langFull;
-        rec = buildRecognizer();
-        try { rec.stop(); } catch (e) {}
-        setTimeout(() => { if (listening && !intentionalStop) safeStart(); }, 300);
-      } else {
-        currentLang = langFull;
-        currentCode = langCode;
-        sessionLangCode = langCode;
-        sessionLangFull = langFull;
-        renderLive();
-      }
-    }
-
-    Array.from(langBar.children).forEach(btn => {
-      btn.addEventListener('click', () => setLanguage(btn.dataset.lang, btn.dataset.code, btn));
-    });
-
-    /* ---------- Buttons ---------- */
-    startBtn.onclick = async () => {
-      if (!SR) {
-        log('Speech API not supported', 'err');
-        return;
-      }
-      log('--- Start ---', 'info');
-      intentionalStop = false;
-      listening = true;
-      restarting = false;
-      consecutiveRestarts = 0;
-      currentDelay = CONFIG.restartDelay;
-      sessionCount = 0;
-      restartCount = 0;
-      sessionLangCode = currentCode;
-      sessionLangFull = currentLang;
-
-      if (!rec) rec = buildRecognizer();
-
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        log('✅ mic permission granted');
-        stream.getTracks().forEach(t => t.stop());
-      } catch (err) {
-        log('❌ getUserMedia: ' + err.name, 'err');
-        listening = false;
-        setStatus(false, 'blocked', true);
-        return;
-      }
-
-      await enableKeepAwake();
-
-      setTimeout(() => {
-        if (!listening) return;
-        safeStart();
-        setStatus(true);
-        if (!timerInterval) startTimer();
-      }, 150);
-    };
-
-    stopBtn.onclick = () => {
-      log('⏹ Stop', 'info');
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
       intentionalStop = true;
       listening = false;
-      if (rec) { try { rec.stop(); } catch (e) {} }
-      commitSession();
+      setStatus(false, 'mic blocked', true);
+      advisory.className = 'advisory err show';
+      advisory.innerHTML = '<strong>⚠️ Microphone blocked</strong>Tap the 🔒 icon in the address bar → Permissions → Microphone → Allow, then reload.';
+      return;
+    }
+
+    if (e.error === 'no-speech') {
+      // Normal — will auto-restart
+      return;
+    }
+
+    if (e.error === 'audio-capture') {
+      log('   → No microphone found', 'err');
+    }
+
+    if (e.error === 'network') {
+      log('   → Network issue', 'warn');
+    }
+  };
+
+  r.onend = () => {
+    log('🔚 Session ended', 'info');
+
+    if (!listening || intentionalStop) {
+      // User stopped
       stopTimer();
-      disableKeepAwake();
       setStatus(false, 'idle');
-      renderLive();
-    };
+      render();
+      return;
+    }
 
-    submitBtn.onclick = () => {
-      const text = plainText();
-      if (!text) {
-        savedEl.textContent = '⚠️ Nothing to submit.';
-        savedEl.classList.add('placeholder');
-        return;
-      }
-      savedEl.textContent = text;
-      savedEl.classList.remove('placeholder');
-      const wc = wordCount(text);
-      savedMeta.textContent = wc + ' words · ' + text.length + ' chars';
-      log('📥 Submitted (' + wc + ' words)', 'info');
-    };
+    // Auto-restart
+    restartCount++;
+    consecutiveFails++;
 
-    copyBtn.onclick = async () => {
-      const text = plainText();
-      if (!text) return;
-      try {
-        await navigator.clipboard.writeText(text);
-        copyBtn.textContent = '✅ Copied';
-        setTimeout(() => copyBtn.textContent = '📋 Copy', 1500);
-      } catch (e) { log('❌ Clipboard: ' + e.message, 'err'); }
-    };
-
-    clearBtn.onclick = () => {
+    if (consecutiveFails > 20) {
+      log('⛔ Too many failures — stopping', 'err');
       intentionalStop = true;
       listening = false;
-      if (rec) { try { rec.stop(); } catch (e) {} }
-      segments = [];
-      sessionFinalText = '';
-      currentInterim = '';
-      restartCount = 0;
-      sessionCount = 0;
-      resetMemory();
-      resetTimer();
-      renderLive();
-      savedEl.textContent = 'Submitted text appears here.';
-      savedEl.classList.add('placeholder');
-      savedMeta.textContent = '';
-      disableKeepAwake();
-      setStatus(false, 'idle');
-      log('🧹 Cleared', 'info');
-    };
+      setStatus(false, 'failed', true);
+      return;
+    }
 
-    /* ---------- Lifecycle ---------- */
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden && listening) log('⚠️ tab hidden', 'warn');
-    });
+    const delay = Math.min(300 + consecutiveFails * 200, 2000);
+    log('↻ Restart #' + restartCount + ' in ' + delay + 'ms', 'warn');
 
-    window.addEventListener('beforeunload', () => {
-      if (rec && listening) { try { rec.stop(); } catch (e) {} }
-      disableKeepAwake();
-    });
+    clearTimeout(restartTimer);
+    restartTimer = setTimeout(() => {
+      if (listening && !intentionalStop) startRec();
+    }, delay);
+  };
 
-    /* ---------- Init ---------- */
-    applyDeviceUI();
-    setStatus(false, 'idle');
-    renderLive();
-    log('Ready — mobile optimized.', 'info');
-  </script>
+  return r;
+}
+
+function startRec() {
+  if (!rec || isStarting) return;
+  isStarting = true;
+  try {
+    rec.start();
+  } catch (err) {
+    isStarting = false;
+    if (err.name === 'InvalidStateError') {
+      // Already started — try stopping then restarting
+      try { rec.stop(); } catch (e) {}
+      setTimeout(() => {
+        if (listening && !intentionalStop) {
+          try { rec.start(); isStarting = true; } catch (e) { isStarting = false; }
+        }
+      }, 500);
+    } else {
+      log('start() failed: ' + err.message, 'err');
+      setTimeout(() => {
+        if (listening && !intentionalStop) startRec();
+      }, 1000);
+    }
+  }
+}
+
+/* ============ LANGUAGE ============ */
+function setLanguage(lang, code, btn) {
+  if (currentLang === lang) return;
+  log('🌐 → ' + lang, 'info');
+
+  Array.from(langBar.children).forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  currentLang = lang;
+  currentCode = code;
+
+  if (listening && rec) {
+    intentionalStop = true;
+    try { rec.stop(); } catch (e) {}
+    setTimeout(() => {
+      intentionalStop = false;
+      rec = createRecognizer();
+      startRec();
+    }, 400);
+  } else {
+    if (rec) { try { rec.stop(); } catch (e) {} }
+    rec = createRecognizer();
+  }
+}
+
+Array.from(langBar.children).forEach(btn => {
+  btn.addEventListener('click', () => setLanguage(btn.dataset.lang, btn.dataset.code, btn));
+});
+
+/* ============ BUTTONS ============ */
+startBtn.onclick = async () => {
+  if (!SR) {
+    log('Speech API not supported', 'err');
+    return;
+  }
+
+  log('=== START ===', 'info');
+  intentionalStop = false;
+  listening = true;
+  isStarting = false;
+  consecutiveFails = 0;
+  restartCount = 0;
+
+  // Request mic permission first
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach(t => t.stop());
+    log('✅ Mic permission granted');
+  } catch (err) {
+    log('❌ Mic denied: ' + err.name, 'err');
+    listening = false;
+    setStatus(false, 'blocked', true);
+    advisory.className = 'advisory err show';
+    advisory.innerHTML = '<strong>⚠️ Microphone blocked</strong>Tap the 🔒 icon in the address bar → Permissions → Microphone → Allow, then reload.';
+    return;
+  }
+
+  await keepAwake();
+
+  if (!rec) rec = createRecognizer();
+
+  setStatus(true);
+  startTimer();
+  render();
+
+  // Small delay to let UI update
+  setTimeout(() => startRec(), 200);
+};
+
+stopBtn.onclick = () => {
+  log('⏹ Stop', 'info');
+  intentionalStop = true;
+  listening = false;
+  clearTimeout(restartTimer);
+  if (rec) { try { rec.stop(); } catch (e) {} }
+  stopTimer();
+  releaseAwake();
+  setStatus(false, 'idle');
+  render();
+};
+
+submitBtn.onclick = () => {
+  const text = getFullText();
+  if (!text) {
+    savedEl.textContent = '⚠️ Nothing to submit.';
+    savedEl.classList.add('placeholder');
+    return;
+  }
+  savedEl.textContent = text;
+  savedEl.classList.remove('placeholder');
+  const wc = text.split(/\s+/).filter(Boolean).length;
+  savedMeta.textContent = wc + ' words · ' + text.length + ' chars';
+  log('📥 Submitted (' + wc + ' words)', 'info');
+};
+
+copyBtn.onclick = async () => {
+  const text = getFullText();
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    copyBtn.textContent = '✅ Copied';
+    setTimeout(() => copyBtn.textContent = '📋 Copy', 1500);
+  } catch (e) {
+    log('❌ Clipboard: ' + e.message, 'err');
+  }
+};
+
+clearBtn.onclick = () => {
+  intentionalStop = true;
+  listening = false;
+  clearTimeout(restartTimer);
+  if (rec) { try { rec.stop(); } catch (e) {} }
+  finalText = '';
+  interimText = '';
+  restartCount = 0;
+  consecutiveFails = 0;
+  totalSeconds = 0;
+  stopTimer();
+  render();
+  savedEl.textContent = 'Submitted text appears here.';
+  savedEl.classList.add('placeholder');
+  savedMeta.textContent = '';
+  releaseAwake();
+  setStatus(false, 'idle');
+  log('🧹 Cleared', 'info');
+};
+
+/* ============ VISIBILITY ============ */
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && listening) {
+    log('⚠️ Tab hidden — recognition may pause', 'warn');
+  } else if (!document.hidden && listening && rec) {
+    log('👁 Tab visible — ensuring recognition', 'info');
+    // Try to restart if it died while hidden
+    setTimeout(() => {
+      if (listening && !intentionalStop && !isStarting) {
+        try { rec.start(); } catch (e) {}
+      }
+    }, 300);
+  }
+});
+
+window.addEventListener('beforeunload', () => {
+  if (rec && listening) { try { rec.stop(); } catch (e) {} }
+  releaseAwake();
+});
+
+/* ============ INIT ============ */
+if (!SR) {
+  startBtn.disabled = true;
+  log('Speech API NOT available', 'err');
+} else {
+  rec = createRecognizer();
+  log('Speech API ready', 'info');
+}
+
+setStatus(false, 'idle');
+render();
+log('Ready.', 'info');
+</script>
 </body>
 </html>
